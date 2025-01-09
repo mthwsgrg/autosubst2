@@ -17,40 +17,66 @@ Definition apc {X Y} {f g : X -> Y} {x y : X} (p : f = g) (q : x = y) : f x = g 
     We implement the finite type with _n_ elements, _I^n_, as the _n_-fold iteration of the Option Type. _I^0_ is implemented as the empty type.
 *)
 
-Fixpoint fin (n : nat) : Type :=
+Print option.
+
+Print sum.
+
+
+Fixpoint oldfin (n : nat) : Type :=
   match n with
   | 0 => False
-  | S m => option (fin m)
+  | S m => option (oldfin m)
   end.
+
+
+Inductive scope : Type :=
+| Base : nat -> scope
+| Ext : scope -> scope
+| ExtV : nat -> scope -> scope.
+ Coercion Base : nat >-> scope. 
+
+Print unit.
+
+Fixpoint fin (d: scope) : Type :=
+  match d with
+  | Base n => oldfin n
+  | Ext d1 => sum unit (fin d1)
+  | ExtV n d1 => sum (oldfin n) (fin d1)              
+  end.
+
 
 (** Renamings and Injective Renamings
      _Renamings_ are mappings between finite types.
 *)
-Definition ren (m n : nat) : Type := fin m -> fin n.
+Definition ren (m n : scope) : Type := fin m -> fin n.
 
 Definition id {X} (x : X) := x.
 
-Definition idren {k: nat} : ren k k :=
+Definition idren {k: scope} : ren k k :=
   fun x => x.
 
 (** We give a special name, to the newest element in a non-empty finite type, as it usually corresponds to a freshly bound variable. *)
-Definition var_zero {n : nat} : fin (S n) := None.
 
-Definition null {T} (i : fin 0) : T := match i with end.
+(* Definition var_zero {n : nat} : fin (S n) := None. *)
+Definition ext_zero {d: scope} : fin (Ext d) := inl tt.
+   
+  
+ 
+(* Definition null {T} (i : fin 0) : T := match i with end. *)
 
-Definition shift {n : nat} : ren n (S n) :=
-  Some.
 
 Definition comp := @funcomp.
 
-(** Extension of Finite Mappings
-    Assume we are given a mapping _f_ from _I^n_ to some type _X_, then we can _extend_ this mapping with a new value from _x : X_ to a mapping from _I^n+1_ to _X_. We denote this operation by _x . f_ and define it as follows:
-*)
-Definition scons {X : Type} {n : nat} (x : X) (f : fin n -> X) (m : fin (S n)) : X :=
-  match m with
-  | None => x
-  | Some i => f i
-  end.
+Definition shift {d : scope} : ren d (Ext d) := inr.
+ 
+
+Definition scons {X: Type} {d: scope} (x : X)
+  (f : fin d -> X) (i: fin (Ext d)) : X :=
+ match i with
+ | inl tt => x
+ | inr v => f v
+ end.
+
 
 
 (** ** Type Class Instances for Notation *)
@@ -130,119 +156,148 @@ Open Scope subst_scope.
 Notation "x .: f" := (@scons _ _ x f) (at level 55) : subst_scope.
 
 (** Generic lifting operation for renamings *)
-Definition up_ren m n (xi : ren m n) : ren (S m) (S n) :=
-  var_zero .: xi >> shift.
+Definition up_ren m n (xi : ren m n) : ren (Ext m) (Ext n) :=
+  ext_zero .: xi >> shift.
 
 (** Generic proof that lifting of renamings composes. *)
 Lemma up_ren_ren k l m (xi: ren k l) (zeta : ren l m) (rho: ren k m) (E: forall x, (xi >> zeta) x = rho x) :
   forall x, (up_ren xi >> up_ren zeta) x = up_ren rho x.
 Proof.
-  intros [x|].
-  - simpl. unfold funcomp. now rewrite <- E.
-  - reflexivity.
+  intros x.
+  destruct x.
+  - unfold funcomp.
+    destruct u.
+    simpl.
+    reflexivity.
+  -  unfold up_ren. simpl in *.
+     unfold funcomp. simpl in *.
+     unfold shift. specialize (E f).
+     unfold funcomp in E. rewrite E. reflexivity.
 Qed.
 
 Arguments up_ren_ren {k l m} xi zeta rho E.
 
-Lemma scons_eta {T} {n : nat} (f : fin (S n) -> T) :
-  f var_zero .: shift >> f = f.
-Proof. fext. intros [x|]; reflexivity.  Qed.
+Lemma scons_eta {T} {n : scope} (f : fin (Ext n) -> T) :
+  f ext_zero .: shift >> f = f.
+Proof.
+  fext.
+  intros x.
+  simpl in x.
+  destruct x.
+  -  destruct u.
+     simpl; reflexivity.
+  -  unfold shift. unfold funcomp. unfold ext_zero.
+     simpl; reflexivity.
+Qed.
 
 
-Lemma scons_eta_id {n : nat} : var_zero .: shift = id :> (fin (S n) -> fin (S n)).
-Proof. fext. intros [x|]; reflexivity. Qed.
-
+Lemma scons_eta_id {n : scope} : ext_zero .: shift = id :> (fin (Ext n) -> fin (Ext n)).
+Proof.
+  fext.
+  intros x.
+  destruct x.
+  - destruct u.
+    reflexivity.
+  - unfold shift. unfold ext_zero. simpl. eauto.    
+Qed.
+  
 Lemma scons_comp (T: Type) U {m} (s: T) (sigma: fin m -> T) (tau: T -> U ) :
   (s .: sigma) >> tau = (tau s) .: (sigma >> tau) .
 Proof.
-  fext. intros [x|]. reflexivity. simpl. reflexivity.
+  fext.
+  intros.
+  destruct x.
+  - destruct u.
+    unfold funcomp.
+    reflexivity.
+  - unfold funcomp. simpl. reflexivity.
 Qed.
 
-Lemma fin_eta {X} (f g : fin 0 -> X) :
+
+Lemma fin_eta {X} (f g : fin (Base 0) -> X) :
   forall x, f x = g x.
 Proof. intros []. Qed.
 
 
+(*
+
+Arguments funcomp {X Y Z} (g)%fscope (f)%fscope.
+
+Notation "f >> g" := (funcomp g f) (at level 50).
+Open Scope subst_scope.
+
+*)
+
+
 (** ** Variadic Substitution Primitives *)
 
-Fixpoint shift_p (p : nat) {n} : ren n (p + n) :=
-  fun n => match p with
-        | 0 => n
-        | S p => Some (shift_p p n)
-        end.
+Definition shift_p (p : nat) {d} : ren d (ExtV p d) := inr.
+  
 
-Fixpoint scons_p {X: Type} {m : nat} : forall {n} (f : fin m -> X) (g : fin n -> X), fin (m + n)  -> X.
-Proof.
-  destruct m.
-  - intros n f g. exact g.
-  - intros n f g. cbn. apply scons.
-    + exact (f var_zero).
-    + apply scons_p.
-      * intros z. exact (f (Some z)).
-      * exact g.
-Defined.
+Definition scons_p {X: Type} {m : nat} {d} (f : fin  (Base m) -> X) (g : fin d -> X) (x: fin (ExtV m d)) : X :=
+  match x with
+   | inl o => f o
+   | inr o => g o
+  end.
 
-Definition zero_p {m : nat} {n} : fin m -> fin (m + n).
-Proof.
-  induction m.
-  - intros [].
-  - intros [x|].
-    + exact (shift_p 1 (IHm x)).
-    + exact var_zero.
-Defined.
 
-Lemma scons_p_head' {X} {m n} (f : fin m -> X) (g : fin n -> X) z:
+Definition zero_p {m : nat} {d} : fin (Base m) -> fin (ExtV m d) := inl.
+
+
+Lemma scons_p_head' {X} {m:nat} {d} (f : fin (Base m) -> X) (g : fin d -> X) z:
   (scons_p  f g) (zero_p  z) = f z.
 Proof.
- induction m.
-  - inversion z.
-  - destruct z.
-    + simpl. simpl. now rewrite IHm.
-    + reflexivity.
-Qed.
-
-Lemma scons_p_head X m n (f : fin m -> X) (g : fin n -> X) :
+  reflexivity.
+Qed.  
+ 
+Lemma scons_p_head X (m:nat) d (f : fin  (Base m) -> X) (g : fin d -> X) :
   (zero_p  >> scons_p f g) = f.
 Proof. fext. intros z. unfold funcomp. apply scons_p_head'. Qed.
 
-Lemma scons_p_tail' X  m n (f : fin m -> X) (g : fin n -> X) z :
+Lemma scons_p_tail' X  (m:nat) d (f : fin (Base m) -> X) (g : fin d -> X) z :
   scons_p  f g (shift_p m z) = g z.
-Proof. induction m; cbn; eauto. Qed.
+Proof. reflexivity. Qed.
 
-Lemma scons_p_tail X  m n (f : fin m -> X) (g : fin n -> X) :
+
+Lemma scons_p_tail X  (m:nat) n (f : fin  (Base m) -> X) (g : fin n -> X) :
   shift_p m  >> scons_p f g = g.
 Proof. fext. intros z. unfold funcomp. apply scons_p_tail'. Qed.
 
-Lemma destruct_fin {m n} (x : fin (m + n)):
+Lemma destruct_fin {m d} (x : fin (ExtV m d)):
   (exists x', x = zero_p  x') \/ exists x', x = shift_p m x'.
 Proof.
-  induction m; simpl in *.
-  - right. eauto.
-  - destruct x as [x|].
-    + destruct (IHm x) as [[x' ->] |[x' ->]].
-      * left. now exists (Some x').
-      * right. eauto.
-    + left. exists None. eauto.
+  simpl in *.
+  destruct x.
+  -  left. exists o. eauto.
+  -  right. exists f. eauto.
 Qed.
 
-Lemma scons_p_comp' X Y m n (f : fin m -> X) (g : fin n -> X) (h : X -> Y) x:
+Lemma scons_p_comp' X Y (m:nat) d (f : fin (Base m) -> X) (g : fin d -> X) (h : X -> Y) x:
  h (scons_p  f g x)  = scons_p (f >> h) (g >> h) x.
 Proof.
+  simpl in *.
   destruct (destruct_fin x) as [[x' ->]|[x' ->]].
   - now rewrite !scons_p_head'.
   - now rewrite !scons_p_tail'.
 Qed.
 
-Lemma scons_p_comp {X Y m n} {f : fin m -> X} {g : fin n -> X} {h : X -> Y} :
+Lemma scons_p_comp {X Y} {m:nat} {d} {f : fin (Base m) -> X} {g : fin d -> X} {h : X -> Y} :
   (scons_p f g) >> h = scons_p   (f >> h) (g >> h).
 Proof. fext. intros z. unfold funcomp. apply scons_p_comp'. Qed.
 
-Lemma scons_p_congr {X} {m n} (f f' : fin m -> X) (g g': fin n -> X) z:
+Lemma scons_p_congr {X} {m:nat} {d} (f f' : fin (Base m) -> X) (g g': fin d -> X) z:
   (forall x, f x = f' x) -> (forall x, g x = g' x) -> scons_p f g z = scons_p f' g' z.
-Proof. intros H1 H2. induction m; eauto. cbn. destruct z; eauto. Qed.
+Proof.
+  intros.
+  simpl in *.
+  destruct z.
+  - eauto.
+  - eauto.
+Qed.    
+
 
 (** Generic n-ary lifting operation. *)
-Definition upRen_p p { m : nat } { n : nat } (xi : (fin) (m) -> (fin) (n)) : fin (p + m) -> fin (p + n)  :=
+Definition upRen_p p { m : scope } { n : scope } (xi : (fin) (m) -> (fin) (n)) : fin (ExtV p m) -> fin (ExtV p n)  :=
    scons_p  (zero_p ) (xi >> shift_p _).
 
 Arguments upRen_p p {m n} xi.
@@ -258,11 +313,11 @@ Proof.
 Qed.
 
 
-Arguments zero_p m {n}.
-Arguments scons_p  {X} m {n} f g.
+Arguments zero_p m {d}.
+Arguments scons_p  {X} m {d} f g.
 
-Lemma scons_p_eta {X} {m n} {f : fin m -> X}
-      {g : fin n -> X} (h: fin (m + n) -> X) {z: fin (m + n)}:
+Lemma scons_p_eta {X} {m:nat} {d} {f : fin (Base m) -> X}
+      {g : fin d -> X} (h: fin (ExtV m d) -> X) {z: fin (ExtV m d)}:
   (forall x, g x = h (shift_p m x)) -> (forall x, f x = h (zero_p m x)) -> scons_p m f g z = h z.
 Proof.
   intros H1 H2. destruct (destruct_fin z) as [[? ->] |[? ->]].
@@ -270,15 +325,15 @@ Proof.
   - rewrite scons_p_tail'. eauto.
 Qed.
 
-Arguments scons_p_eta {X} {m n} {f g} h {z}.
-Arguments scons_p_congr {X} {m n} {f f'} {g g'} {z}.
+Arguments scons_p_eta {X} {m d} {f g} h {z}.
+Arguments scons_p_congr {X} {m d} {f f'} {g g'} {z}.
 
 Opaque scons.
-Opaque var_zero.
-Opaque null.
+(* Opaque var_zero. *)
+(* Opaque null. *)
 Opaque shift.
 Opaque up_ren.
-Opaque var_zero.
+Opaque ext_zero.
 Opaque idren.
 Opaque comp.
 Opaque funcomp.
@@ -314,14 +369,14 @@ Ltac fsimpl :=
 
          | [|- zero_p >> scons_p ?f ?g] => rewrite scons_p_head
 
-         | [|- context[(?s.:?sigma) var_zero]] => change ((s.:sigma) var_zero) with s
+         | [|- context[(?s.:?sigma) ext_zero]] => change ((s.:sigma) ext_zero) with s
          | [|- context[(?s.:?sigma) (shift ?m)]] => change ((s.:sigma) (shift m)) with (sigma m)
 
          | [|- context[idren >> ?f]] => change (idren >> f) with f
          | [|- context[?f >> idren]] => change (f >> idren) with f
          | [|- context[?f >> (?x .: ?g)]] => change (f >> (x .: g)) with g
-         | [|- context[?x2 .: shift >> ?f]] => change x2 with (f var_zero); rewrite (@scons_eta _ _ f)
-         | [|- context[?f var_zero .: ?g]] => change g with (shift >> f); rewrite scons_eta
+         | [|- context[?x2 .: shift >> ?f]] => change x2 with (f ext_zero); rewrite (@scons_eta _ _ f)
+         | [|- context[?f ext_zero .: ?g]] => change g with (shift >> f); rewrite scons_eta
 
          |[|- _ =  ?h (?f ?s)] => change (h (f s)) with ((f >> h) s)
          |[|-  ?h (?f ?s) = _] => change (h (f s)) with ((f >> h) s)
@@ -338,8 +393,8 @@ Ltac fsimplc :=
          | [H: context[comp ?f ?g]|- _] => change (comp f g) with (g >> f) in H (* AsimplCompIdL *)
          | [H: context[(?f >> ?g) >> ?h]|- _] =>
            change ((f >> g) >> h) with (f >> (g >> h)) in H (* AsimplComp *)
-         | [H: context[(?s.:?sigma) var_zero]|- _] => change ((s.:sigma) var_zero) with s in H
-         | [H: context[(?s.:?sigma) var_zero]|- _] => change ((s.:sigma) var_zero) with s in H
+         | [H: context[(?s.:?sigma) ext_zero]|- _] => change ((s.:sigma) ext_zero) with s in H
+         | [H: context[(?s.:?sigma) ext_zero]|- _] => change ((s.:sigma) ext_zero) with s in H
          | [H: context[(?s.:?sigma) (shift ?m)]|- _] => change ((s.:sigma) (shift m)) with (sigma m) in H
                                                                                       |[H : context[ _ =  ?h (?f ?s)]|- _] => change (h (f s)) with ((f >> h) s) in H
          |[H: context[?h (?f ?s) = _]|- _] => change (h (f s)) with ((f >> h) s) in H
@@ -348,8 +403,8 @@ Ltac fsimplc :=
          | [H: context[?f >> (?x .: ?g)]|- _] =>
            change (f >> (x .: g)) with g in H
          | [H: context[?x2 .: shift >> ?f]|- _] =>
-           change x2 with (f var_zero) in H; rewrite (@scons_eta _ _ f) in H
-         | [H: context[?f var_zero .: ?g]|- _] =>
+           change x2 with (f ext_zero) in H; rewrite (@scons_eta _ _ f) in H
+         | [H: context[?f ext_zero .: ?g]|- _] =>
            change g with (shift >> f) in H; rewrite scons_eta in H
          | _ => first [progress (rewrite scons_comp in *) | progress (rewrite scons_eta_id in *) | progress (autorewrite with FunctorInstances in *)]
          end.
@@ -358,14 +413,18 @@ Ltac fsimplc :=
 Tactic Notation "fsimpl" "in" "*" :=
   fsimpl; fsimplc.
 
+
 Tactic Notation "auto_case" tactic(t) :=  (match goal with
                                            | [|- forall (i : fin 0), _] => intros []; t
-                                           | [|- forall (i : fin (S (S (S (S _))))), _] => intros [[[[|]|]|]|]; t
-                                           | [|- forall (i : fin (S (S (S _)))), _] => intros [[[|]|]|]; t
-                                           | [|- forall (i : fin (S (S _))), _] => intros [[?|]|]; t
-                                           | [|- forall (i : fin (S _)), _] =>  intros [?|]; t
+                                           | [|- forall (i : fin (Ext (Ext (Ext (Ext _))))), _] => intros [[[[|]|]|]|]; t
+                                           | [|- forall (i : fin (Ext (Ext (Ext _)))), _] => intros [[[|]|]|]; t
+                                           | [|- forall (i : fin (Ext (Ext _))), _] => intros [[?|]|]; t
+                                           | [|- forall (i : fin (Ext _)), _] =>  intros [?|]; t
                                            end).
 
 
+
 (** Functor instances which can be added later on. *)
-Hint Rewrite  @scons_p_comp scons_p_head scons_p_tail @scons_p_head' @scons_p_tail': FunctorInstances.
+#[export] Hint Rewrite  @scons_p_comp scons_p_head scons_p_tail @scons_p_head' @scons_p_tail': FunctorInstances.
+
+

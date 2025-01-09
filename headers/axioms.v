@@ -6,7 +6,8 @@
 
 (** *** Functional Extensionality
     We import the axiom from the Coq Standard Library and derive a utility tactic to make the assumption practically usable.
-*)
+ *)
+
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Import Program.Tactics.
 
@@ -110,4 +111,4 @@ Definition cod_comp {X} {A B C} {f : A -> B} {g : B -> C} {h} :
   (forall x, (funcomp g f) x =  h x) -> forall (p: X -> _), cod_map g (cod_map f p) = cod_map h p.
 Proof. intros H p. unfold cod_map. fext. intros x. now rewrite <- H. Defined.
 
-Hint Rewrite in_map_iff : FunctorInstances.
+#[export] Hint Rewrite in_map_iff : FunctorInstances.
