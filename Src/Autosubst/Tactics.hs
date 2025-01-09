@@ -70,7 +70,9 @@ upRen :: TId -> [Binder] -> Terms -> GenM Terms
 upRen x bs xs = ups x (\z b xi -> idApp (upRen_ b z) (fst (variadicScopeParameters b) ++ [xi])) xs bs
 
 upScope :: TId -> [Binder] -> Terms -> GenM Terms
-upScope x bs terms = ups x (\z b n -> succ_ n z b ) terms bs
+--upScope x bs terms = ups x (\z b n -> succ_ n z b ) terms bs
+-- This change adds Ext and ExtV to type annotations of terms (but not fin types) 
+upScope x bs terms = ups x (\z b n -> skope_ext n z b ) terms bs
 
 upSubstS :: TId -> [Binder] -> Terms -> GenM Terms
 upSubstS x bs xs = ups x (\z b xi ->  idApp (up_ b z) (fst (variadicScopeParameters b) ++ [xi])) xs bs
@@ -144,17 +146,21 @@ patternSIdNoRen x b = do
                             BinderList p z -> if y == z then shiftp p y else (id_ TermUnderscore)) (map TermId xs) b
 
 -- Generation of arguments
+-- made changes in introScopeTy introScopeVar introScopeVarS (all the type annotations changed from nat to scope, but fin type annotations aren't affected)
 introScopeTy :: (MonadReader Signature m, MonadError String m) => TId -> Term -> m Term
 introScopeTy x s = do
                   args <- substOf x
-                  return $ L.foldl (\t _ -> TermFunction nat t) s args
+                  return $ L.foldl (\t _ -> TermFunction skope t) s args
+                  --return $ L.foldl (\t _ -> TermFunction nat t) s args
+                  
 
 -- 3. Generation of Substitution Objects
 introScopeVar :: String -> TId -> GenM (SubstTy, [CBinder])
 introScopeVar s x = do
   args <- substOf x
   let scope = map (\x -> s ++ x) args
-  return (SubstScope (map TermId scope), [BinderImplicitScopeNameType scope nat])
+  return (SubstScope (map TermId scope), [BinderImplicitScopeNameType scope skope])
+  --return (SubstScope (map TermId scope), [BinderImplicitScopeNameType scope nat])
 
 introRenScope :: (String, String) -> TId -> GenM ((SubstTy, SubstTy), [CBinder])
 introRenScope (m, n) x = do
@@ -163,7 +169,8 @@ introRenScope (m, n) x = do
   return ((m, n), bm ++ bn)
 
 introScopeVarS :: String -> GenM (Term, [CBinder])
-introScopeVarS s = return (TermVar (TermId s), [BinderImplicitScopeNameType [s] nat])
+introScopeVarS s = return (TermVar (TermId s), [BinderImplicitScopeNameType [s] skope])
+--introScopeVarS s = return (TermVar (TermId s), [BinderImplicitScopeNameType [s] nat])
 
 introRenScopeS :: (String, String) -> GenM ((Term, Term), [CBinder])
 introRenScopeS (m, n) = do
@@ -242,6 +249,8 @@ cons__ :: TId -> Binder -> Term -> SubstTy -> Term
 cons__ z (Single y) sigma m = if (z == y) then TermApp cons_ [zero_ z (Single y) m, sigma] else sigma
 cons__ z (BinderList p y) sigma m = if (z == y) then idApp "scons_p " [TermId p, zero_ z (BinderList p y) m, sigma] else sigma
 
+-- changing the case from var zero to extzero
 zero_ :: TId -> Binder -> SubstTy -> Term
-zero_ x (Single y) m       = TermApp (var x m) [varZero_]
+--zero_ x (Single y) m       = TermApp (var x m) [varZero_]
+zero_ x (Single y) m       = TermApp (var x m) [extZero_]
 zero_ x (BinderList p y) m = idApp "zero_p" [TermId p] >>> var x m

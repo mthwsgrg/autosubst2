@@ -19,6 +19,7 @@ coqPreamble :: Doc
 coqPreamble = coqShow (SentenceRequireExport ["fintype"]) 
 
 -- Printing of constants
+-- Added printing for new skope, ext_zero, inltt, inr
 instance CoqShow Const where
   coqShow Some    = text "Some"
   coqShow None    = text "None"
@@ -27,15 +28,21 @@ instance CoqShow Const where
   coqShow Trans   = text "eq_trans"
   coqShow Nat     = text "nat"
   coqShow Suc     = text "S"
+  coqShow Skope   = text "scope"
+  coqShow Ext     = text "Ext"
+  coqShow ExtV    = text "ExtV"
   coqShow Fin     = text "fin"
   coqShow Id      = text "id"
   coqShow Comp    = text "funcomp"
   coqShow Upren   = text "up_ren"
   coqShow Cons    = text "scons"
   coqShow VarZero = text "var_zero"
+  coqShow ExtZero = text "ext_zero"
   coqShow Ap      = text "ap"
   coqShow Shift = text "shift"
   coqShow Fext = text "FunctionalExtensionality.functional_extensionality _ _ "
+  coqShow Inltt = text "inl tt"
+  coqShow Inr = text "inr"
 
 -- Generation of tuples accepted by Coq, no parentheses if there is just one component.
 cTupled ::  [Doc] -> Doc

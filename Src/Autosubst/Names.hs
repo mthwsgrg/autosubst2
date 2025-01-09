@@ -176,6 +176,11 @@ upRen_p_ = "upRen_p"
 plus_ :: TId -> Term -> Term 
 plus_ m t = idApp (m ++ " +") [t]
 
+--extv_ definition
+extv_ :: TId -> Term -> Term
+extv_ m t = idApp ("ExtV " ++ m) [t]
+
+
 up_ren_ :: TId -> Binder -> Term -> Term
 up_ren_ y (Single x) xi  =  if (y == x) then TermApp (TermConst Upren) [xi] else xi
 up_ren_ y (BinderList m x) xi =  if (y == x) then idApp upRen_p_ [TermId m, xi] else xi
@@ -183,6 +188,12 @@ up_ren_ y (BinderList m x) xi =  if (y == x) then idApp upRen_p_ [TermId m, xi] 
 succ_ ::   Term -> TId -> Binder -> Term
 succ_ n z (Single x) = if (z == x) then TermApp (TermConst Suc) [n] else n
 succ_ n z (BinderList m x) = if (z == x) then plus_ m n else n
+
+-- new definition : skope_ext (which adds the proper type annotation: Ext or ExtV
+skope_ext ::   Term -> TId -> Binder -> Term
+skope_ext n z (Single x) = if (z == x) then TermApp (TermConst Ext) [n] else n
+skope_ext n z (BinderList m x) = if (z == x) then extv_ m n else n
+
 
 
 varFtSort :: TId -> String 

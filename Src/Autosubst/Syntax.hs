@@ -82,12 +82,15 @@ data SubstTy =
   | SubstConst Terms
 
 -- Constants -- needed to print them differently depending on the theorem prover
+-- Added new constructors Skope, Ext, ExtV, ExtZero, Inltt, Inr
 data Const = Some | None
+            | Inltt | Inr
             | Refl | Sym | Trans
             | Nat | Suc
+            | Skope | Ext | ExtV
             | Fin
             | Id | Comp
-            | Upren | Shift  | Cons | VarZero
+            | Upren | Shift  | Cons | VarZero | ExtZero
             | Ap
             | Fext
 
@@ -161,9 +164,17 @@ substTerms (SubstConst xs) = xs
 none_ :: Term
 none_ = TermConst None
 
+-- addding for inltt
+inltt_ :: Term
+inltt_ = TermConst Inltt
+
 -- tail
 some_ :: Term
 some_ = TermConst Some
+
+-- adding for inr
+inr_ :: Term
+inr_ = TermConst Inr
 
 eqSym_ :: Term -> Term
 eqSym_ s = TermApp (TermConst Sym)  [s]
@@ -173,6 +184,11 @@ eqTrans_ s t = TermApp (TermConst Trans)  [s,t]
 
 nat :: Term
 nat = TermConst Nat
+
+-- new definition of skope
+-- Scope/scope is named as Skope/skope to avoid any conflict with local variable usage
+skope :: Term
+skope = TermConst Skope
 
 fin_ :: Term -> Term
 fin_ n = TermApp (TermConst Fin) [n]
@@ -194,6 +210,11 @@ cons_ = TermConst Cons
 
 varZero_ :: Term
 varZero_ = TermConst VarZero
+
+-- adding definiton for extzero
+extZero_ :: Term
+extZero_ = TermConst ExtZero
+
 
 ap_ :: [Term] -> Term
 ap_ s =  TermApp (TermConst Ap) s
@@ -221,8 +242,10 @@ idSubstApp x n = TermApp (TermId x) [TermSubst n]
 
 
 -- Matching on fin types
+-- Adding inltt and inr instead of some and none
 matchFin_ :: Term -> (Term -> Term) -> Term -> Term
-matchFin_ s f b = TermMatch (MatchItem s) Nothing [Equation (PatternConstructor some_ ["fin_n"]) (f (TermId "fin_n")), Equation (PatternConstructor none_ []) b]
+matchFin_ s f b = TermMatch (MatchItem s) Nothing [Equation (PatternConstructor inr_ ["fin_n"]) (f (TermId "fin_n")), Equation (PatternConstructor inltt_ []) b]
+--matchFin_ s f b = TermMatch (MatchItem s) Nothing [Equation (PatternConstructor some_ ["fin_n"]) (f (TermId "fin_n")), Equation (PatternConstructor none_ []) b]
 
 -- Create only a section, if the set of sentences is non-empty
 nonEmptySection :: String -> [Sentence] -> [Sentence]

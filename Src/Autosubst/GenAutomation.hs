@@ -143,12 +143,19 @@ genNotationClass x =
       notation = [SentenceNotation ("↑__" ++ x) (TermId ("up_" ++ x) ) ("only printing") "subst_scope"]
       in (cl ++ notation)
 
+-- some changes here (not sure why because m' is not used )
+
 genUpNotationPrint :: (Binder, TId) -> GenM [Sentence]
 genUpNotationPrint (Single b,y) = do
     ((m,n), bs) <- introSubstScopeS ("m", "n") y
     n' <- upSubst y [Single b] n
-    let m' = succ_ m y (Single b)
+    let m' = skope_ext m y (Single b)
         up_not_print = SentenceNotation ("↑__" ++ b) (TermId ( up_ (Single b) y) ) ("only printing") "subst_scope"
         up_instance = SentenceInstance bs ("Up" ++ "_" ++ b ++ "_" ++ y) (idApp ("Up_" ++ y) [TermUnderscore, TermUnderscore]) (idApp ("@" ++ up_ (Single b) y) ([m] ++ substTerms n))
     return $ [up_not_print, up_instance]
 genUpNotationPrint _ = return []
+--let m' = succ_ m y (Single b)
+--        up_not_print = SentenceNotation ("↑__" ++ b) (TermId ( up_ (Single b) y) ) ("only printing") "subst_scope"
+--        up_instance = SentenceInstance bs ("Up" ++ "_" ++ b ++ "_" ++ y) (idApp ("Up_" ++ y) [TermUnderscore, TermUnderscore]) (idApp ("@" ++ up_ (Single b) y) ([m] ++ substTerms n))
+--    return $ [up_not_print, up_instance]
+--genUpNotationPrint _ = return []
