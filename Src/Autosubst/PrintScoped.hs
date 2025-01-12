@@ -28,7 +28,7 @@ instance CoqShow Const where
   coqShow Trans   = text "eq_trans"
   coqShow Nat     = text "nat"
   coqShow Suc     = text "S"
-  coqShow Skope   = text "scope"
+  coqShow Skope   = text "Set"
   coqShow Ext     = text "Ext"
   coqShow ExtV    = text "ExtV"
   coqShow Fin     = text "fin"
