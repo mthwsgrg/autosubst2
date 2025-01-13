@@ -193,6 +193,11 @@ skope = TermConst Skope
 fin_ :: Term -> Term
 fin_ n = TermApp (TermConst Fin) [n]
 
+
+-- This is a new thing, in order not to mess with existing setup, I just using this
+void_ :: Term -> Term
+void_ n = TermApp (TermId "") [n]
+
 (>>>) :: Term -> Term -> Term
 s >>> t = TermApp (TermConst Comp) [t, s]
 

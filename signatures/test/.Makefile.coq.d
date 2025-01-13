@@ -50,8 +50,6 @@ utlc_num.vo utlc_num.glob utlc_num.v.beautified utlc_num.required_vo: utlc_num.v
 utlc_num.vos utlc_num.vok utlc_num.required_vos: utlc_num.v fintype.vos
 utlc.vo utlc.glob utlc.v.beautified utlc.required_vo: utlc.v fintype.vo
 utlc.vos utlc.vok utlc.required_vos: utlc.v fintype.vos
-variadic_fin_base.vo variadic_fin_base.glob variadic_fin_base.v.beautified variadic_fin_base.required_vo: variadic_fin_base.v fintype.vo
-variadic_fin_base.vos variadic_fin_base.vok variadic_fin_base.required_vos: variadic_fin_base.v fintype.vos
 variadic_fin.vo variadic_fin.glob variadic_fin.v.beautified variadic_fin.required_vo: variadic_fin.v fintype.vo
 variadic_fin.vos variadic_fin.vok variadic_fin.required_vos: variadic_fin.v fintype.vos
 variadic_list.vo variadic_list.glob variadic_list.v.beautified variadic_list.required_vo: variadic_list.v fintype.vo

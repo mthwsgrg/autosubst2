@@ -19,12 +19,26 @@ import qualified Text.PrettyPrint.Leijen    as P
 -- Generation of syntax from a signature
 
 -- 1. Generation of the inductive type of expressions
+
+{-
+Changing finVar to voidVar
+
 genVar :: TId -> SubstTy -> GenM [InductiveCtor]
 genVar x n = do
   open_x <- isOpen x
   s <- finVar x (substTerms n)
   let t = [s] ==> idSubstApp x n
   return [InductiveCtor (var_ x) (Just t) | open_x]
+-}
+
+genVar :: TId -> SubstTy -> GenM [InductiveCtor]
+genVar x n = do
+  open_x <- isOpen x
+  s <- voidVar x (substTerms n)
+  let t = [s] ==> idSubstApp x n
+  return [InductiveCtor (var_ x) (Just t) | open_x]
+
+
 
 genArg :: TId -> SubstTy -> [Binder] -> Argument  -> GenM Term
 genArg x n bs (Atom y)  = liftM2 idApp (addFeatureArgs y) (fmap substTerms $ castUpSubst x bs y n)

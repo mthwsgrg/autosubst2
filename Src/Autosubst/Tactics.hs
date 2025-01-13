@@ -185,12 +185,28 @@ genRenS s (m,n) = do
   return $ (TermId s, [BinderNameType [s] (renType m n)])
 
 -- Generation of substitution objects for a list of renamings
+
+{-
+Changing fin_ to void_
+
 genRen :: TId -> String -> (SubstTy, SubstTy) -> GenM (SubstTy, [CBinder])
 genRen x xi (m,n) = do
   xs <- substOf x
   let xis = map (\x -> xi ++ x) xs
   let tys = map (\(m, n) -> TermFunction (fin_ m) (fin_ n)) (zip (substTerms m) (substTerms n))
   return $ (SubstRen (map TermId xis), map (\(x,t) -> BinderNameType [x] t) (zip xis tys))
+-}
+genRen :: TId -> String -> (SubstTy, SubstTy) -> GenM (SubstTy, [CBinder])
+genRen x xi (m,n) = do
+  xs <- substOf x
+  let xis = map (\x -> xi ++ x) xs
+  let tys = map (\(m, n) -> TermFunction (void_ m) (void_ n)) (zip (substTerms m) (substTerms n))
+  return $ (SubstRen (map TermId xis), map (\(x,t) -> BinderNameType [x] t) (zip xis tys))
+
+
+
+{-
+Changing fin_ to void_
 
 genSubst :: TId -> String -> (SubstTy, SubstTy) -> GenM (SubstTy, [CBinder])
 genSubst x sigma (m,n) = do
@@ -200,6 +216,19 @@ genSubst x sigma (m,n) = do
       n' <- castSubst x y n
       return $ TermFunction (fin_ m) (idSubstApp y n')) (zip xs (substTerms m))
   return $ (SubstSubst (map TermId sigmas), map (\(x,t) -> BinderNameType [x] t) (zip sigmas tys))
+
+-}
+
+genSubst :: TId -> String -> (SubstTy, SubstTy) -> GenM (SubstTy, [CBinder])
+genSubst x sigma (m,n) = do
+  xs <- substOf x
+  let sigmas = map (\x -> sigma ++ x) xs
+  tys <- mapM (\(y, m) -> do
+      n' <- castSubst x y n
+      return $ TermFunction (void_ m) (idSubstApp y n')) (zip xs (substTerms m))
+  return $ (SubstSubst (map TermId sigmas), map (\(x,t) -> BinderNameType [x] t) (zip sigmas tys))
+
+
 
 introSubstScopeS :: (String, String) -> TId -> GenM ((Term, SubstTy), [CBinder])
 introSubstScopeS (m,n) y = do
@@ -230,18 +259,47 @@ genEqs x e sigma tau f = do
 var :: TId -> SubstTy -> Term
 var x xs = idApp (var_ x) (substTerms xs)
 
+
+
+
+{-
+Changing fin_ to void_
+
+- gentype is used generation of genRenS
+- gentype is used in generation of some code in generator.hs
+
 renType :: Term -> Term -> Term
 renType m n = TermFunction (fin_ m) (fin_ n)
+-}
+
+renType :: Term -> Term -> Term
+renType m n = TermFunction (void_ m) (void_ n)
+
+
+
+
+{-
+Chaning fin_ to void_
 
 substType :: Term -> SubstTy -> TId -> Term
 substType m n y = TermFunction (fin_ m) (idSubstApp y n)
+-}
+
+substType :: Term -> SubstTy -> TId -> Term
+substType m n y = TermFunction (void_ m) (idSubstApp y n)
+
 
 equiv_ :: Term -> Term -> Term
 equiv_ s t =  TermForall [BinderName "x"] (TermEq (TermApp s [TermId "x"]) (TermApp t  [TermId "x"]))
 
 -- Get the scope corresponding to x
+
 finVar :: TId -> TmScope -> GenM Term
 finVar x n = fmap fin_ (toVar x (SubstScope n))
+
+-- To correspond a new void operator
+voidVar :: TId -> TmScope -> GenM Term
+voidVar x n = fmap void_ (toVar x (SubstScope n))
 
 
 -- TODO

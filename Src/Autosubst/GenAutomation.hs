@@ -109,6 +109,9 @@ genInstances substSorts varSorts = do
   varInstances <- mapM genVarInstance varSorts
   return $ substInstances ++ ifB isRen renInstances ++ concat varInstances
 
+{-
+Changing the fin_ to void_
+
 genVarInstance :: TId -> GenM [Sentence]
 genVarInstance x = do
   (m, bm) <- introScopeVar "m" x
@@ -119,6 +122,19 @@ genVarInstance x = do
       varPrint = SentenceNotation ("x '__" ++ x ++ "'") (idApp (var_ x) [TermId "x"]) ("at level 5, format \"" ++ "x __" ++ x ++ "\"")  "subst_scope"
       idPrint = SentenceNotation "'var'" (TermId (var_ x)) "only printing, at level 1" "subst_scope"
   return $ [varI, varPrint, varIPrint, idPrint]
+-}
+
+genVarInstance :: TId -> GenM [Sentence]
+genVarInstance x = do
+  (m, bm) <- introScopeVar "m" x
+  xs <- substOf x
+  mx <- toVar x m
+  let varI = SentenceInstance bm (vartc_ x) (idApp "Var" [void_ mx, substToTerm x m]) (idApp ("@" ++ var_ x) (substTerms m))
+      varIPrint = SentenceNotation ("x '__" ++ x ++ "'") (idApp "@ids" [TermUnderscore, TermUnderscore, TermId (vartc_ x), TermId "x"]) ("at level 5, only printing, format \"" ++ "x __" ++ x ++ "\"")  "subst_scope"
+      varPrint = SentenceNotation ("x '__" ++ x ++ "'") (idApp (var_ x) [TermId "x"]) ("at level 5, format \"" ++ "x __" ++ x ++ "\"")  "subst_scope"
+      idPrint = SentenceNotation "'var'" (TermId (var_ x)) "only printing, at level 1" "subst_scope"
+  return $ [varI, varPrint, varIPrint, idPrint]
+
 
 genRenInstance :: TId -> GenM Sentence
 genRenInstance x = do
