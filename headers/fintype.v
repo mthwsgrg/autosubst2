@@ -22,7 +22,7 @@ Print option.
 Print sum.
 
 
-Fixpoint fint (n : nat) : Set :=
+Fixpoint fint (n : nat) : Type :=
   match n with
   | 0 => False
   | S m => option (fint m)
@@ -31,25 +31,25 @@ Fixpoint fint (n : nat) : Set :=
 
 
 
-Definition Ext (Z: Set) : Set := sum unit Z.
-Definition ExtV (n: nat) (Z: Set) : Set := sum (fint n) Z.
+Definition Ext (Z: Type) : Type := sum unit Z.
+Definition ExtV (n: nat) (Z: Type) : Type := sum (fint n) Z.
 
 
 
 (** Renamings and Injective Renamings
      _Renamings_ are mappings between finite types.
 *)
-Definition ren (Z1 Z2 : Set) : Type := Z1 -> Z2.
+Definition ren (Z1 Z2 : Type) : Type := Z1 -> Z2.
 
 Definition id {X} (x : X) := x.
 
-Definition idren {Z: Set} : ren Z Z :=
+Definition idren {Z: Type} : ren Z Z :=
   fun x => x.
 
 (** We give a special name, to the newest element in a non-empty finite type, as it usually corresponds to a freshly bound variable. *)
 
 (* Definition var_zero {n : nat} : fin (S n) := None. *)
-Definition ext_zero {Z: Set} : Ext Z := inl tt.
+Definition ext_zero {Z: Type} : Ext Z := inl tt.
    
   
  
@@ -58,10 +58,10 @@ Definition ext_zero {Z: Set} : Ext Z := inl tt.
 
 Definition comp := @funcomp.
 
-Definition shift {Z : Set} : ren Z (Ext Z) := inr.
+Definition shift {Z : Type} : ren Z (Ext Z) := inr.
  
 
-Definition scons {X: Type} {Z: Set} (x : X)
+Definition scons {X: Type} {Z: Type} (x : X)
   (f :  Z -> X) (i: Ext Z) : X :=
  match i with
  | inl tt => x
@@ -168,7 +168,7 @@ Qed.
 
 Arguments up_ren_ren {X Y Z} xi zeta rho E.
 
-Lemma scons_eta {T} {n : Set} (f : (Ext n) -> T) :
+Lemma scons_eta {T} {n : Type} (f : (Ext n) -> T) :
   f ext_zero .: shift >> f = f.
 Proof.
   fext.
@@ -182,7 +182,7 @@ Proof.
 Qed.
 
 
-Lemma scons_eta_id {n : Set} : ext_zero .: shift = id :> ((Ext n) -> (Ext n)).
+Lemma scons_eta_id {n : Type} : ext_zero .: shift = id :> ((Ext n) -> (Ext n)).
 Proof.
   fext.
   intros x.
@@ -192,7 +192,7 @@ Proof.
   - unfold shift. unfold ext_zero. simpl. eauto.    
 Qed.
   
-Lemma scons_comp (T: Type) U {m:Set} (s: T) (sigma:  m -> T) (tau: T -> U ) :
+Lemma scons_comp (T: Type) U {m:Type} (s: T) (sigma:  m -> T) (tau: T -> U ) :
   (s .: sigma) >> tau = (tau s) .: (sigma >> tau) .
 Proof.
   fext.
@@ -204,7 +204,14 @@ Proof.
   - unfold funcomp. simpl. reflexivity.
 Qed.
 
-Definition phi := Empty_set.
+Unset Automatic Proposition Inductives. 
+
+Inductive Empty_type : Type :=  .
+
+Print Empty_type.
+
+
+Definition phi := Empty_type.
 
 Lemma fin_eta {X} (f g : phi -> X) :
   forall x, f x = g x.
@@ -223,10 +230,10 @@ Open Scope subst_scope.
 
 (** ** Variadic Substitution Primitives *)
 
-Definition shift_p (p : nat) {d:Set} : ren d (ExtV p d) := inr.
+Definition shift_p (p : nat) {d:Type} : ren d (ExtV p d) := inr.
   
 
-Definition scons_p {X: Type} {m : nat} {d:Set} (f : fint m -> X) (g : d -> X) (x: ExtV m d) : X :=
+Definition scons_p {X: Type} {m : nat} {d:Type} (f : fint m -> X) (g : d -> X) (x: ExtV m d) : X :=
   match x with
    | inl o => f o
    | inr o => g o
@@ -236,22 +243,22 @@ Definition scons_p {X: Type} {m : nat} {d:Set} (f : fint m -> X) (g : d -> X) (x
 Definition zero_p {m : nat} {d} : fint  m -> ExtV m d := inl.
 
 
-Lemma scons_p_head' {X} {m:nat} {d:Set} (f : fint m -> X) (g : d -> X) z:
+Lemma scons_p_head' {X} {m:nat} {d:Type} (f : fint m -> X) (g : d -> X) z:
   (scons_p  f g) (zero_p  z) = f z.
 Proof.
   reflexivity.
 Qed.  
  
-Lemma scons_p_head X (m:nat) {d:Set} (f : fint  (m) -> X) (g : d -> X) :
+Lemma scons_p_head X (m:nat) {d:Type} (f : fint  (m) -> X) (g : d -> X) :
   (zero_p  >> scons_p f g) = f.
 Proof. fext. intros z. unfold funcomp. apply scons_p_head'. Qed.
 
-Lemma scons_p_tail' X  (m:nat) {d:Set} (f : fint (m) -> X) (g : d -> X) z :
+Lemma scons_p_tail' X  (m:nat) {d:Type} (f : fint (m) -> X) (g : d -> X) z :
   scons_p  f g (shift_p m z) = g z.
 Proof. reflexivity. Qed.
 
 
-Lemma scons_p_tail X  (m:nat) {n:Set} (f : fint  (m) -> X) (g : n -> X) :
+Lemma scons_p_tail X  (m:nat) {n:Type} (f : fint  (m) -> X) (g : n -> X) :
   shift_p m  >> scons_p f g = g.
 Proof. fext. intros z. unfold funcomp. apply scons_p_tail'. Qed.
 
@@ -264,7 +271,7 @@ Proof.
   -  right. exists d0. eauto.
 Qed.
 
-Lemma scons_p_comp' X Y (m:nat) {d:Set} (f : fint (m) -> X) (g : d -> X) (h : X -> Y) x:
+Lemma scons_p_comp' X Y (m:nat) {d:Type} (f : fint (m) -> X) (g : d -> X) (h : X -> Y) x:
  h (scons_p  f g x)  = scons_p (f >> h) (g >> h) x.
 Proof.
   simpl in *.
@@ -273,11 +280,11 @@ Proof.
   - now rewrite !scons_p_tail'.
 Qed.
 
-Lemma scons_p_comp {X Y} {m:nat} {d:Set} {f : fint  m -> X} {g : d -> X} {h : X -> Y} :
+Lemma scons_p_comp {X Y} {m:nat} {d:Type} {f : fint  m -> X} {g : d -> X} {h : X -> Y} :
   (scons_p f g) >> h = scons_p   (f >> h) (g >> h).
 Proof. fext. intros z. unfold funcomp. apply scons_p_comp'. Qed.
 
-Lemma scons_p_congr {X} {m:nat} {d:Set} (f f' : fint ( m) -> X) (g g':  d -> X) z:
+Lemma scons_p_congr {X} {m:nat} {d:Type} (f f' : fint ( m) -> X) (g g':  d -> X) z:
   (forall x, f x = f' x) -> (forall x, g x = g' x) -> scons_p f g z = scons_p f' g' z.
 Proof.
   intros.
@@ -289,13 +296,13 @@ Qed.
 
 
 (** Generic n-ary lifting operation. *)
-Definition upRen_p p { m : Set } { n : Set } (xi : (m) -> (n)) : (ExtV p m) -> (ExtV p n)  :=
+Definition upRen_p p { m : Type } { n : Type } (xi : (m) -> (n)) : (ExtV p m) -> (ExtV p n)  :=
    scons_p  (zero_p ) (xi >> shift_p _).
 
 Arguments upRen_p p {m n} xi.
 
 (** Generic proof for composition of n-ary lifting. *)
-Lemma up_ren_ren_p {p:nat} {k l m:Set} (xi: ren k l) (zeta : ren l m) (rho: ren k m) (E: forall x, (xi >> zeta) x = rho x) :
+Lemma up_ren_ren_p {p:nat} {k l m:Type} (xi: ren k l) (zeta : ren l m) (rho: ren k m) (E: forall x, (xi >> zeta) x = rho x) :
   forall x, (upRen_p p xi >> upRen_p p zeta) x = upRen_p p rho x.
 Proof.
   intros x. destruct (destruct_fin x) as [[? ->]|[? ->]].
@@ -308,7 +315,7 @@ Qed.
 Arguments zero_p m {d}.
 Arguments scons_p  {X} m {d} f g.
 
-Lemma scons_p_eta {X} {m:nat} {d:Set} {f : fint (m) -> X}
+Lemma scons_p_eta {X} {m:nat} {d:Type} {f : fint (m) -> X}
       {g : d -> X} (h: (ExtV m d) -> X) {z: (ExtV m d)}:
   (forall x, g x = h (shift_p m x)) -> (forall x, f x = h (zero_p m x)) -> scons_p m f g z = h z.
 Proof.
