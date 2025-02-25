@@ -41,8 +41,8 @@ instance CoqShow Const where
   coqShow Ap      = text "ap"
   coqShow Shift = text "shift"
   coqShow Fext = text "FunctionalExtensionality.functional_extensionality _ _ "
-  coqShow Inltt = text "inl tt"
-  coqShow Inr = text "inr"
+  coqShow Inltt = text "ext_zero"
+  coqShow Inr = text "shift"
 
 -- Generation of tuples accepted by Coq, no parentheses if there is just one component.
 cTupled ::  [Doc] -> Doc

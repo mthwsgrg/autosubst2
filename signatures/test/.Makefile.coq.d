@@ -30,6 +30,8 @@ sysf_cbv.vo sysf_cbv.glob sysf_cbv.v.beautified sysf_cbv.required_vo: sysf_cbv.v
 sysf_cbv.vos sysf_cbv.vok sysf_cbv.required_vos: sysf_cbv.v fintype.vos
 sysf_pat_2.vo sysf_pat_2.glob sysf_pat_2.v.beautified sysf_pat_2.required_vo: sysf_pat_2.v fintype.vo
 sysf_pat_2.vos sysf_pat_2.vok sysf_pat_2.required_vos: sysf_pat_2.v fintype.vos
+sysf_pat_lam.vo sysf_pat_lam.glob sysf_pat_lam.v.beautified sysf_pat_lam.required_vo: sysf_pat_lam.v fintype.vo
+sysf_pat_lam.vos sysf_pat_lam.vok sysf_pat_lam.required_vos: sysf_pat_lam.v fintype.vos
 sysf_pat.vo sysf_pat.glob sysf_pat.v.beautified sysf_pat.required_vo: sysf_pat.v fintype.vo
 sysf_pat.vos sysf_pat.vok sysf_pat.required_vos: sysf_pat.v fintype.vos
 sysf.vo sysf.glob sysf.v.beautified sysf.required_vo: sysf.v fintype.vo

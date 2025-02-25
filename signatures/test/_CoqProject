@@ -15,6 +15,7 @@ stvargen.v
 stvar.v
 sysf_cbv.v
 sysf_pat_2.v
+sysf_pat_lam.v
 sysf_pat.v
 sysf.v
 sysL.v
