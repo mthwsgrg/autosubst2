@@ -16,7 +16,7 @@ instance CoqShow String where
   coqShow = text
 
 coqPreamble :: Doc
-coqPreamble = coqShow (SentenceRequireExport ["fintype"]) 
+coqPreamble = coqShow (SentenceRequireExport ["scopeops"]) 
 
 -- Printing of constants
 -- Added printing for new skope, ext_zero, inltt, inr

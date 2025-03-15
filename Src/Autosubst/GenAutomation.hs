@@ -70,7 +70,7 @@ genScopeImplicits = do
               b <- isOpen x
               nec <- fmap (not . null) (substOf x)
               cs' <- constructors x
-              (n, _) <- introScopeVar "n" x
+              (n, _) <- introScopeVar "Y" x
               return $ if nec then (map (\(Constructor _ c _) -> SentenceCommand $ Arguments c (substTerms n))
                 ([Constructor [] (var_ x) [] | b] ++ cs')) else [])
               (concat (map fst sorts))
@@ -126,7 +126,7 @@ genVarInstance x = do
 
 genVarInstance :: TId -> GenM [Sentence]
 genVarInstance x = do
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "X" x
   xs <- substOf x
   mx <- toVar x m
   let varI = SentenceInstance bm (vartc_ x) (idApp "Var" [void_ mx, substToTerm x m]) (idApp ("@" ++ var_ x) (substTerms m))
@@ -138,7 +138,7 @@ genVarInstance x = do
 
 genRenInstance :: TId -> GenM Sentence
 genRenInstance x = do
-  ((m,n), bmn) <- introRenScope ("m", "n") x
+  ((m,n), bmn) <- introRenScope ("X", "Y") x
   (sigma, b)<- genRen x "" (m,n)
   let bs = binderTypes b
   xs <- substOf x
@@ -146,7 +146,7 @@ genRenInstance x = do
 
 genSubstInstance :: TId -> GenM Sentence
 genSubstInstance x = do
-  ((m,n), bmn) <- introRenScope ("m", "n") x
+  ((m,n), bmn) <- introRenScope ("X", "Y") x
   (sigma, b)<- genSubst x "" (m,n)
   let bs = binderTypes b
   xs <- substOf x
@@ -163,7 +163,7 @@ genNotationClass x =
 
 genUpNotationPrint :: (Binder, TId) -> GenM [Sentence]
 genUpNotationPrint (Single b,y) = do
-    ((m,n), bs) <- introSubstScopeS ("m", "n") y
+    ((m,n), bs) <- introSubstScopeS ("X", "Y") y
     n' <- upSubst y [Single b] n
     let m' = skope_ext m y (Single b)
         up_not_print = SentenceNotation ("↑__" ++ b) (TermId ( up_ (Single b) y) ) ("only printing") "subst_scope"

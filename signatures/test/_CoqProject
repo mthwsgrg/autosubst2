@@ -4,10 +4,10 @@ cbpv_bool.v
 cbpv_letrec.v
 cbpv.v
 cps.v
-fintype.v
 fol_param.v
 multibind.v
 pi_calculus.v
+scopeops.v
 stlcProd.v
 stsub.v
 stvarcopy.v
@@ -26,5 +26,6 @@ utlc_2.v
 utlc_cbv.v
 utlc_num.v
 utlc.v
+variadic_fin_both.v
 variadic_fin.v
 variadic_list.v
