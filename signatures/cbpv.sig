@@ -5,7 +5,7 @@ value : Type
 comp : Type
 bool : Type
 
-zero: valtype
+zeroo: valtype
 one: valtype
 U: comptype -> valtype
 Sigma: valtype -> valtype -> valtype

@@ -3,9 +3,9 @@ cod : Functor
 term  : Type
 form  : Type
 
-Func (f : nat) : "cod (fin f)" (term) -> term
+Func (f : nat) : "cod (finat f)" (term) -> term
 Fal : form
-Pred (p : nat) : "cod (fin p)" (term) -> form
+Pred (p : nat) : "cod (finat p)" (term) -> form
 Impl : form -> form -> form
 Conj : form -> form -> form
 Disj : form -> form -> form

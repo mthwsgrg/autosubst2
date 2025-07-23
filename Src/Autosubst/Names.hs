@@ -178,7 +178,7 @@ plus_ m t = idApp (m ++ " +") [t]
 
 --extv_ definition
 extv_ :: TId -> Term -> Term
-extv_ m t = idApp ("ExtV " ++ m) [t]
+extv_ m t = idApp ("Plus " ++ m) [t]
 
 
 up_ren_ :: TId -> Binder -> Term -> Term
