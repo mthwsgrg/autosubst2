@@ -112,3 +112,153 @@ Definition cod_comp {X} {A B C} {f : A -> B} {g : B -> C} {h} :
 Proof. intros H p. unfold cod_map. fext. intros x. now rewrite <- H. Defined.
 
 #[export] Hint Rewrite in_map_iff : FunctorInstances.
+
+
+
+
+
+(** Vectors *)
+
+
+
+(** A ℕ-indexed finite type for vectors *)
+Fixpoint finat (n : nat) : Type :=
+  match n with
+  | 0 => False
+  | S m => option (finat m)
+  end.
+
+
+
+(** Vector definition *)
+Notation vec n A := (cod (finat n)  A).
+
+(** Vector satisfies the functor laws *)
+Definition vec_map {A B: Type} {n: nat} (f: A -> B) (v: vec n A) := fun n => f (v n).
+Definition vec_id {n: nat} {A} {f : A -> A} :
+  (forall x, f x = x) -> forall (p: finat n -> A), vec_map f p = p.
+Proof. intros H p. unfold vec_map. fext. congruence. Defined.
+Definition vec_ext {n: nat} {A B} {f f' : A -> B} :
+  (forall x, f x = f' x) -> forall (p: finat n -> A), vec_map f p = vec_map f' p.
+Proof. intros H p. unfold vec_map. fext. congruence. Defined.
+Definition vec_comp {n: nat} {A B C} {f : A -> B} {g : B -> C} {h} :
+  (forall x, (funcomp g f) x =  h x) -> forall (p: finat n -> _), vec_map g (vec_map f p) = vec_map h p.
+Proof. intros H p. unfold vec_map. fext. intros x. now rewrite <- H. Defined.
+
+
+
+(** finat functions *)
+Fixpoint finat_add (m : nat) {n} : finat ( n) -> finat ( (m + n)) :=
+  fun n => match m with
+        | 0 => n
+        | S m => Some (finat_add m n)
+        end.
+
+
+Definition finat_expand {m : nat} {n} : finat (m) -> finat ((m + n)).
+Proof.
+  induction m.
+  - intros [].
+  - intros [x|].
+    + exact (finat_add 1 (IHm x)).
+    + exact None.
+Defined.
+
+
+Lemma destruct_finat {m n} (x : finat ((m + n))):
+  (exists x', x = finat_expand  x') \/ exists x', x = finat_add m x'.
+Proof.
+  induction m; simpl in *.
+  - right. eauto.
+  - destruct x as [x|].
+    + destruct (IHm x) as [[x' ->] |[x' ->]].
+      * left. now exists (Some x').
+      * right. eauto.
+    + left. exists None. eauto.
+Qed.
+
+
+
+
+
+(** Vector operations *)
+Definition vcons {X : Type} {n : nat} (x : X) (f : finat (n) -> X) (m : finat ( (S n))) : X :=
+  match m with
+  | None => x
+  | Some i => f i
+  end.
+
+Fixpoint vcat {X: Type} {m : nat} : forall {n} (f : finat ( m) -> X) (g : finat ( n) -> X),
+             finat ((m + n))  -> X.
+Proof.
+  destruct m.
+  - intros n f g. exact g.
+  - intros n f g. cbn. apply vcons.
+    + exact (f None).
+    + apply vcat.
+      * intros z. exact (f (Some z)).
+      * exact g.
+Defined.
+
+
+Notation vcomp f g := (funcomp g f). 
+
+
+
+
+
+(** Vector properties *)
+Lemma vcons_comp (T: Type) U {m} (s: T) (sigma: finat (m) -> T) (tau: T -> U ) :
+  vcomp (vcons s sigma) tau =  vcons (tau s) (vcomp sigma  tau).
+Proof.
+  fext. intros [x|]. reflexivity. simpl. reflexivity.
+Qed.
+
+
+
+Lemma vcat_first' {X} {m n} (f : finat (m) -> X) (g : finat (n) -> X) z:
+  (vcat f g) (finat_expand  z) = f z.
+Proof.
+ induction m.
+  - inversion z.
+  - destruct z.
+    + simpl. simpl. now rewrite IHm.
+    + reflexivity.
+Qed.
+
+Lemma vcat_first X m n (f : finat (m) -> X) (g : finat (n) -> X) :
+  (vcomp finat_expand  (vcat f g)) = f.
+Proof. fext. intros z. unfold funcomp. apply vcat_first'. Qed.
+
+Lemma vcat_second' X  m n (f : finat (m) -> X) (g : finat (n) -> X) z :
+  vcat  f g (finat_add m z) = g z.
+Proof. induction m; cbn; eauto. Qed.
+
+Lemma vcat_tail X  m n (f : finat (m) -> X) (g : finat (n) -> X) :
+  vcomp (finat_add m) ( vcat f g) = g.
+Proof. fext. intros z. unfold funcomp. apply vcat_second'. Qed.
+
+
+Lemma vcat_comp' X Y (m d:nat)  (f : finat (m) -> X) (g : finat (d) -> X) (h : X -> Y) x:
+ h (vcat  f g x)  = vcat  (vcomp f  h) (vcomp g  h) x.
+Proof.
+  simpl in *.
+  destruct (destruct_finat x) as [[x' ->]|[x' ->]].
+  - now rewrite !vcat_first'.
+  - now rewrite !vcat_second'.
+Qed.
+
+Lemma vcat_comp {X Y} {m:nat} {d} {f : finat ( m) -> X} {g : finat (d) -> X} {h : X -> Y} :
+ vcomp (vcat f g)  h = vcat   (vcomp f  h) (vcomp g  h).
+Proof. fext. intros z. unfold funcomp. apply vcat_comp'. Qed.
+
+
+Definition empty_vec {X} : finat 0 -> X :=  fun x => match x with end.
+
+Lemma empty_comp_vec: forall {Y Z} {f: Y -> Z} , ( vcomp empty_vec f) = empty_vec.
+  intros.
+  fext.
+  intros.
+  destruct x.
+Qed.
+

@@ -252,7 +252,7 @@ genCompRenRen x = do
   let b = x == x'
   (eqs, beqs) <- genEqs x "Eq" (zipWith (>>>) (substTerms xi) (substTerms zeta)) (substTerms rho) (\x y s -> return $ case y of 
                                                                                                               Single z -> if z == x then idApp (if b then up_ren_ren_ else  ("up_ren_ren" ++ sep ++ x ++ sep ++ z) ) [TermUnderscore, TermUnderscore, TermUnderscore, s] else s
-                                                                                                              BinderList p x' -> if x' == x then idApp "up_ren_ren_p" [s] else s)
+                                                                                                              BinderList p x' -> if x' == x then idApp "up_ren_ren_n" [s] else s)
   toVarT <- toVar x eqs
   let ret s = TermEq (idApp (ren_ x') (substTerms zeta ++ [idApp (ren_ x) $ substTerms xi  ++ [s]])) (idApp (ren_ x) (substTerms rho ++ [s]))
       sem zs c xs = do
@@ -490,10 +490,10 @@ genUpSubstSubst y z = do
   let t' n z' = (eqTrans_ (idApp (compRenSubst_ z) (pat ++ substTerms zeta'  ++ (map (\(z, p) -> p >>> z) (zip (substTerms zeta') pat)) ++ map (const ((TermAbs [BinderName "x"] eq_refl_))) pat ++ [ TermApp sigma [n]]))
                 (eqTrans_ (eqSym_ (idApp (compSubstRen_ z) ( substTerms tau ++ pat ++ map (const TermUnderscore) pat' ++ map (\x -> ((TermAbs [BinderName "x"] (eqSym_ (if (x == z') then scons_p_tail' (TermId "x") else eq_refl_))))) zs ++ [ TermApp sigma [n]])))
                 (ap_ [(idApp (ren_ z) pat), TermApp eq [n]])))
-  let hd = TermAbs [BinderName "x"] (idApp "scons_p_head'" [TermUnderscore , TermAbs [BinderName "z"] (idApp (ren_ z) (shift ++ [TermApp (var z m) [TermId "z"]] )), TermId "x"])              
+  let hd = TermAbs [BinderName "x"] (idApp "scons_n_head'" [TermUnderscore , TermAbs [BinderName "z"] (idApp (ren_ z) (shift ++ [TermApp (var z m) [TermId "z"]] )), TermId "x"])              
   -- let hd = TermAbs [BinderName "x"] (idApp "scons_p_head'" [TermUnderscore, TermAbs [BinderName "z"] (idApp (ren_ z) (shift ++ [TermUnderscore])), TermId "x"])
   let u = case y of Single z' ->  if z == z' then  matchFin_ (TermId n) t eq_refl_ else t (TermId n)
-                    BinderList p z' -> if z == z' then ((eqTrans_ (idApp "scons_p_comp'" [(idApp "zero_p" [TermId p]) >>> (var z l'), TermUnderscore, TermUnderscore, TermId "p"]) (scons_p_congr_  (TermAbs [BinderName "p"] (t' (TermId "p") z') ) hd))) else t' (TermId n) z'
+                    BinderList p z' -> if z == z' then ((eqTrans_ (idApp "scons_n_comp'" [(idApp "zero_n" [TermId p]) >>> (var z l'), TermUnderscore, TermUnderscore, TermId "p"]) (scons_p_congr_  (TermAbs [BinderName "p"] (t' (TermId "p") z') ) hd))) else t' (TermId n) z'
   return $ Definition (up_subst_subst_ y z) (bpms ++ bk ++ bl ++ bm ++ bsigma ++ btau ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)
 
 
@@ -566,9 +566,9 @@ genUpSubstSubstNoRen y z = do
   let t' n z' = (eqTrans_ (idApp (compSubstSubst_ z) (pat ++ substTerms zeta'  ++ (map (\(z, p) -> p >>> z) (zip (substTerms zeta') shift)) ++ map (const ((TermAbs [BinderName "x"] eq_refl_))) pat ++ [ TermApp sigma [n]]))
                 (eqTrans_ (eqSym_ (idApp (compSubstSubst_ z) ( substTerms tau ++ pat ++ map (const TermUnderscore) pat' ++ map (\x -> ((TermAbs [BinderName "x"] (eqSym_ (if (x == z') then scons_p_tail' (TermId "x") else eq_refl_))))) zs ++ [ TermApp sigma [n]])))
                 (ap_ [(idApp (subst_ z) pat), TermApp eq [n]])))
-  let hd = TermAbs [BinderName "x"] (idApp "scons_p_head'" [TermUnderscore, TermAbs [BinderName "z"] (idApp (subst_ z) (pat ++ [TermApp (var z m) [TermId "z"]])), TermId "x"])
+  let hd = TermAbs [BinderName "x"] (idApp "scons_n_head'" [TermUnderscore, TermAbs [BinderName "z"] (idApp (subst_ z) (pat ++ [TermApp (var z m) [TermId "z"]])), TermId "x"])
   let u = case y of Single z' ->  if z == z' then  matchFin_ (TermId n) t eq_refl_ else t (TermId n)
-                    BinderList p z' -> if z == z' then ((eqTrans_ (idApp "scons_p_comp'" [(idApp "zero_p" [TermId p]) >>> (var z l'), TermUnderscore, TermUnderscore, TermId "p"]) (scons_p_congr_  (TermAbs [BinderName "p"] (t' (TermId "p") z') ) hd))) else t' (TermId n) z'
+                    BinderList p z' -> if z == z' then ((eqTrans_ (idApp "scons_n_comp'" [(idApp "zero_n" [TermId p]) >>> (var z l'), TermUnderscore, TermUnderscore, TermId "p"]) (scons_p_congr_  (TermAbs [BinderName "p"] (t' (TermId "p") z') ) hd))) else t' (TermId n) z'
   return $ Definition (up_subst_subst_ y z) (bpms ++ bk ++ bl ++ bm ++ bsigma ++ btau ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)
 
 
@@ -705,7 +705,7 @@ genUpRinstInst b z = do
   shift <- patternSId z b
   let t n = ap_ [idApp (ren_ z) shift, TermApp eq [n]]
   n <- tfresh "p"
-  let s = eqTrans_ (idApp "scons_p_comp'" [TermUnderscore, TermUnderscore, var z n', TermId n]) (scons_p_congr_ (TermAbs [BinderName n] (t (TermId n))) (TermAbs [BinderName "z"] eq_refl_))
+  let s = eqTrans_ (idApp "scons_n_comp'" [TermUnderscore, TermUnderscore, var z n', TermId n]) (scons_p_congr_ (TermAbs [BinderName n] (t (TermId n))) (TermAbs [BinderName "z"] eq_refl_))
   let u = case b of Single z' ->  if z == z' then matchFin_ (TermId n) t (eq_refl_)  else t (TermId n)
                     BinderList p z' -> if z == z' then s else t (TermId n)
   return $ Definition (up_rinstInst_ b z) (bpms ++ bm ++ bn ++ bxi ++ bsigma ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)

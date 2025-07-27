@@ -247,10 +247,10 @@ finVar x n = fmap fin_ (toVar x (SubstScope n))
 -- TODO
 cons__ :: TId -> Binder -> Term -> SubstTy -> Term
 cons__ z (Single y) sigma m = if (z == y) then TermApp cons_ [zero_ z (Single y) m, sigma] else sigma
-cons__ z (BinderList p y) sigma m = if (z == y) then idApp "scons_p " [TermId p, zero_ z (BinderList p y) m, sigma] else sigma
+cons__ z (BinderList p y) sigma m = if (z == y) then idApp "scons_n " [TermId p, zero_ z (BinderList p y) m, sigma] else sigma
 
 -- changing the case from var zero to extzero
 zero_ :: TId -> Binder -> SubstTy -> Term
 --zero_ x (Single y) m       = TermApp (var x m) [varZero_]
 zero_ x (Single y) m       = TermApp (var x m) [extZero_]
-zero_ x (BinderList p y) m = idApp "zero_p" [TermId p] >>> var x m
+zero_ x (BinderList p y) m = idApp "zero_n" [TermId p] >>> var x m

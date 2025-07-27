@@ -171,7 +171,7 @@ mapExt_ f ts = idApp (f ++ "_ext") ts
 
 -- Successor function for the types of scoped terms
 upRen_p_ :: String 
-upRen_p_ = "upRen_p"
+upRen_p_ = "upRen_n"
 
 plus_ :: TId -> Term -> Term 
 plus_ m t = idApp (m ++ " +") [t]
@@ -200,7 +200,7 @@ varFtSort :: TId -> String
 varFtSort x = x ++ "_var"
 
 shift_p_ :: String 
-shift_p_ = "shift_p"
+shift_p_ = "shift_n"
 
 
 -- Standard names for smart constructors
@@ -277,10 +277,10 @@ retract_subst_ :: TId -> String
 retract_subst_ x = "retract_subst_" ++ x
 
 scons_p_eta_ :: Term -> Term ->  Term ->  Term
-scons_p_eta_ h f g = idApp "scons_p_eta" [h, f, g]
+scons_p_eta_ h f g = idApp "scons_n_eta" [h, f, g]
 
 up_ren_ren_p_ :: String 
-up_ren_ren_p_ = "up_ren_ren_p" 
+up_ren_ren_p_ = "up_ren_ren_n" 
 
 renRen_ :: TId -> String 
 renRen_ x = "renRen_" ++ x
@@ -289,16 +289,16 @@ renRen'_ :: TId -> String
 renRen'_ x = "renRen'_" ++ x
 
 scons_p_comp' :: Term -> Term
-scons_p_comp' x = idApp "scons_p_comp'" [TermUnderscore, TermUnderscore, TermUnderscore, x]
+scons_p_comp' x = idApp "scons_n_comp'" [TermUnderscore, TermUnderscore, TermUnderscore, x]
 
 scons_p_tail' :: Term -> Term
-scons_p_tail' x = idApp "scons_p_tail'" [TermUnderscore, TermUnderscore, x]
+scons_p_tail' x = idApp "scons_n_tail'" [TermUnderscore, TermUnderscore, x]
 
 scons_p_head' :: Term -> Term
-scons_p_head' x = idApp "scons_p_head'" [ TermUnderscore, TermUnderscore, x]
+scons_p_head' x = idApp "scons_n_head'" [ TermUnderscore, TermUnderscore, x]
 
 scons_p_congr_ :: Term -> Term -> Term
-scons_p_congr_ s t = idApp "scons_p_congr" [t,s]
+scons_p_congr_ s t = idApp "scons_n_congr" [t,s]
 
 
 -- "compRen_" ++ x, "renCom_" ++ x, "scons_p_head", "scons_p_comp", "zero_p", "compComp_"

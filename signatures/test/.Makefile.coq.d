@@ -14,8 +14,8 @@ multibind.vo multibind.glob multibind.v.beautified multibind.required_vo: multib
 multibind.vos multibind.vok multibind.required_vos: multibind.v scopeops.vos
 pi_calculus.vo pi_calculus.glob pi_calculus.v.beautified pi_calculus.required_vo: pi_calculus.v scopeops.vo
 pi_calculus.vos pi_calculus.vok pi_calculus.required_vos: pi_calculus.v scopeops.vos
-scopeops.vo scopeops.glob scopeops.v.beautified scopeops.required_vo: scopeops.v axioms.vo vectors.vo
-scopeops.vos scopeops.vok scopeops.required_vos: scopeops.v axioms.vos vectors.vos
+scopeops.vo scopeops.glob scopeops.v.beautified scopeops.required_vo: scopeops.v axioms.vo
+scopeops.vos scopeops.vok scopeops.required_vos: scopeops.v axioms.vos
 stlcProd.vo stlcProd.glob stlcProd.v.beautified stlcProd.required_vo: stlcProd.v scopeops.vo
 stlcProd.vos stlcProd.vok stlcProd.required_vos: stlcProd.v scopeops.vos
 stsub.vo stsub.glob stsub.v.beautified stsub.required_vo: stsub.v scopeops.vo
@@ -56,11 +56,11 @@ variadic_both.vo variadic_both.glob variadic_both.v.beautified variadic_both.req
 variadic_both.vos variadic_both.vok variadic_both.required_vos: variadic_both.v scopeops.vos
 variadic_fin_base.vo variadic_fin_base.glob variadic_fin_base.v.beautified variadic_fin_base.required_vo: variadic_fin_base.v scopeops.vo
 variadic_fin_base.vos variadic_fin_base.vok variadic_fin_base.required_vos: variadic_fin_base.v scopeops.vos
+variadic_fin_both.vo variadic_fin_both.glob variadic_fin_both.v.beautified variadic_fin_both.required_vo: variadic_fin_both.v scopeops.vo
+variadic_fin_both.vos variadic_fin_both.vok variadic_fin_both.required_vos: variadic_fin_both.v scopeops.vos
 variadic_fin.vo variadic_fin.glob variadic_fin.v.beautified variadic_fin.required_vo: variadic_fin.v scopeops.vo
 variadic_fin.vos variadic_fin.vok variadic_fin.required_vos: variadic_fin.v scopeops.vos
 variadic_list.vo variadic_list.glob variadic_list.v.beautified variadic_list.required_vo: variadic_list.v scopeops.vo
 variadic_list.vos variadic_list.vok variadic_list.required_vos: variadic_list.v scopeops.vos
 variadic_sig_2.vo variadic_sig_2.glob variadic_sig_2.v.beautified variadic_sig_2.required_vo: variadic_sig_2.v scopeops.vo
 variadic_sig_2.vos variadic_sig_2.vok variadic_sig_2.required_vos: variadic_sig_2.v scopeops.vos
-vectors.vo vectors.glob vectors.v.beautified vectors.required_vo: vectors.v axioms.vo
-vectors.vos vectors.vok vectors.required_vos: vectors.v axioms.vos
