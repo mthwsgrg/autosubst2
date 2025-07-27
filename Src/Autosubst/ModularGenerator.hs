@@ -42,7 +42,7 @@ hypoLemma (Lemma name bs t _) = SentenceVariable name (TermForall bs t)
 hypoInductive :: [TId] -> Bool -> InductiveBody -> GenM [Sentence]
 hypoInductive z open (InductiveBody x _ _ _) = do
   b <- isOpenComponent x
-  (n,bs) <- introScopeVar "n" x
+  (n,bs) <- introScopeVar "p" x
   s <- finVar x (substTerms n)
   z' <- mapM extend_ z
   return $ [SentenceVariable x (TermSort Type)] ++ [SentenceVariable (var_ x) ([s] ==> idSubstApp x n) | b, not open || not (elem x z') ]
@@ -72,7 +72,7 @@ genSmartArg x n bs (FunApp f p xs) = do
 genSmart :: TId ->  Constructor -> GenM Definition
 genSmart x (Constructor pms cname pos) = do
     x' <- return x
-    (m, bm) <- introScopeVar "m" x
+    (m, bm) <- introScopeVar "q" x
     let s = genPatternNames "s" pos
     let bs s = mapM (\(y, Position binders arg) -> do
                                                   arg_type <- genSmartArg x m binders arg
@@ -84,7 +84,7 @@ genSmart x (Constructor pms cname pos) = do
 genSmartVariableConstructor :: TId -> GenM [Sentence]
 genSmartVariableConstructor x = do
   b <- isOpen x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   x' <- extend_ x
   return $  if b then [SentenceDefinition $ Definition (var_ x') (bm ++ [BinderName "x"]) Nothing (idApp inj_ [idApp (var_ x) [TermId "x"]])] else [] 
 
@@ -132,7 +132,7 @@ genRetracts xs = do
 -- Generation of renaming retracts
 genRetractRen :: TId -> GenM [Sentence]
 genRetractRen x = do
-  ((m,n),bs) <- introRenScope ("m", "n") x
+  ((m,n),bs) <- introRenScope ("q", "p") x
   (xi,bxi) <- genRen x "xi" (m,n)
   toVarT <- toVar x xi
   x' <- extend_ x
@@ -141,7 +141,7 @@ genRetractRen x = do
 -- Generation of substitution retracts
 genRetractSubst :: TId -> GenM [Sentence]
 genRetractSubst x = do
-  ((m,n),bs) <- introRenScope ("m", "n") x
+  ((m,n),bs) <- introRenScope ("q", "p") x
   (sigma,bsigma) <- genSubst x "sigma" (m,n)
   toVarT <- toVar x sigma
   x' <- extend_ x

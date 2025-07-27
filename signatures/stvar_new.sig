@@ -23,7 +23,7 @@ patlabel : nat -> pat -> pat
 patprod : "prod" (pat, pat) -> pat
 
 -- the constructors for clause
-pipe (p:nat) : pat -> (<p, tm> -> tm) -> clause
+pipe (n:nat) : pat -> (<n, tm> -> tm) -> clause
 
 -- the constructors for tm
 app  : tm -> tm -> tm

@@ -73,6 +73,7 @@ getFeature [] = Nothing
 getFeature ('_' : xs) = Just xs 
 getFeature (x : xs) = getFeature xs
 
+-- n -> p ??
 filterFeatures :: [FtId] -> Constructor -> Bool
 filterFeatures features (Constructor pms ('I' : 'n' : '_' : c) m) = case (getFeature c) of  
                                                                               Just c' -> c' `elem` features || c `elem` features
@@ -124,7 +125,7 @@ getUps p = do
   spec <- components
   xs <- mapM (\x -> do
           xs <- substOf (L.head x)
-          return $ [(Single x,y) | x <- xs, y <- xs] ++ [(BinderList "p" x,y) | x <- xs, y <- xs, p == Coq]) (map fst spec) -- condition with p == Coq is needed because variadic binders are only supported for scoped Coq code so far
+          return $ [(Single x,y) | x <- xs, y <- xs] ++ [(BinderList "n" x,y) | x <- xs, y <- xs, p == Coq]) (map fst spec) -- condition with p == Coq is needed because variadic binders are only supported for scoped Coq code so far
   return $ nub (concat xs)
 
 -- 1. Functions on all signatures

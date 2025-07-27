@@ -2,5 +2,5 @@ tm: Type
 
 cod : Functor
 
-app (p: nat): tm -> "cod (finat p)" (tm) -> tm
-lam (p: nat) : ((<p,tm>) -> tm) -> tm
+app (n: nat): tm -> "cod (finat n)" (tm) -> tm
+lam (n: nat) : ((<n,tm>) -> tm) -> tm

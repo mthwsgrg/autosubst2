@@ -2,5 +2,5 @@ tm: Type
 
 vec : Functor
 
-app (p: nat): tm -> "vec p" (tm) -> tm
-lam (p: nat) : ((<p,tm>) -> tm) -> tm
+app (n: nat): tm -> "vec n" (tm) -> tm
+lam (n: nat) : ((<n,tm>) -> tm) -> tm

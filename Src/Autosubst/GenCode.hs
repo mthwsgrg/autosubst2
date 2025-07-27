@@ -26,7 +26,7 @@ import           Autosubst.PrintUnscoped
 
 
 genBindersFromList :: [TId] -> [(Binder, TId)]
-genBindersFromList xs = [(Single x, y) | x <- xs, y <- xs] ++ [(BinderList "p" x, y) | x <- xs, y <- xs]
+genBindersFromList xs = [(Single x, y) | x <- xs, y <- xs] ++ [(BinderList "n" x, y) | x <- xs, y <- xs]
 
 
 lastName :: String -> FilePath -> FilePath

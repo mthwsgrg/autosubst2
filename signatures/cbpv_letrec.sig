@@ -9,7 +9,7 @@ const : nat -> value
 thunk: comp -> value
 
 force: value -> comp
-letrec (p : nat) : (<p,value>  -> "cod (finat p)" (comp)) -> (<p,value> -> comp) -> comp
+letrec (n : nat) : (<n,value>  -> "cod (finat n)" (comp)) -> (<n,value> -> comp) -> comp
 prd : value -> comp
 seq : comp -> (value -> comp) -> comp
 app: comp -> value -> comp

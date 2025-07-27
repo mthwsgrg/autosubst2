@@ -25,4 +25,4 @@ ttxx : tm
 app  : tm -> tm -> tm
 abs : (tm -> tm) -> tm 
 couple : tm -> tm -> tm
-letpat (p : nat) : pat -> tm -> (<p, tm> -> tm) -> tm
+letpat (n : nat) : pat -> tm -> (<n, tm> -> tm) -> tm

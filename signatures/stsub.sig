@@ -24,5 +24,5 @@ app  : tm -> tm -> tm
 abs : (tm -> tm) -> tm 
 rectm : "list" ("prod" (nat, tm)) -> tm
 proj : tm -> nat -> tm 
-letpat (p : nat) : pat -> tm -> (<p, tm> -> tm) -> tm
+letpat (n : nat) : pat -> tm -> (<n, tm> -> tm) -> tm
 

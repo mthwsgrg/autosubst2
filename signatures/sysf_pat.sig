@@ -23,4 +23,4 @@ abs : ty -> (tm -> tm) -> tm
 tabs : ty -> (ty -> tm) -> tm 
 rectm : "list" ("prod" (nat, tm)) -> tm
 proj : tm -> nat -> tm 
-letpat (p : nat) : tm -> "cod (finat p)" (ty) -> "cod (finat p)" ("list" (nat)) -> (<p, tm> -> tm) -> tm
+letpat (n : nat) : tm -> "cod (finat n)" (ty) -> "cod (finat n)" ("list" (nat)) -> (<n, tm> -> tm) -> tm

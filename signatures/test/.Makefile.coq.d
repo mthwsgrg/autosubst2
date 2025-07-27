@@ -52,6 +52,8 @@ utlc_num.vo utlc_num.glob utlc_num.v.beautified utlc_num.required_vo: utlc_num.v
 utlc_num.vos utlc_num.vok utlc_num.required_vos: utlc_num.v scopeops.vos
 utlc.vo utlc.glob utlc.v.beautified utlc.required_vo: utlc.v scopeops.vo
 utlc.vos utlc.vok utlc.required_vos: utlc.v scopeops.vos
+variadic_both.vo variadic_both.glob variadic_both.v.beautified variadic_both.required_vo: variadic_both.v scopeops.vo
+variadic_both.vos variadic_both.vok variadic_both.required_vos: variadic_both.v scopeops.vos
 variadic_fin_base.vo variadic_fin_base.glob variadic_fin_base.v.beautified variadic_fin_base.required_vo: variadic_fin_base.v scopeops.vo
 variadic_fin_base.vos variadic_fin_base.vok variadic_fin_base.required_vos: variadic_fin_base.v scopeops.vos
 variadic_fin.vo variadic_fin.glob variadic_fin.v.beautified variadic_fin.required_vo: variadic_fin.v scopeops.vo

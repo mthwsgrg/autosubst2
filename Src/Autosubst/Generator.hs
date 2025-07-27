@@ -44,7 +44,7 @@ genCons x n (Constructor pms cname pos) = do
 genBody :: TId -> GenM InductiveBody
 genBody x = do
   cs <- constructors x
-  (n,b) <- introScopeVar "n" x
+  (n,b) <- introScopeVar "p" x
   varCons <- genVar x n
   constructors <- mapM (genCons x n) cs
   return $ InductiveBody x (makeExplicit b) (TermSort Type) (varCons ++ constructors)
@@ -53,7 +53,7 @@ genBody x = do
 -- 2. Generationof the Congruence Proofs
 genCongruence :: TId -> Constructor -> GenM Lemma
 genCongruence x (Constructor pms cname pos) = do
-    (m, bm) <- introScopeVar "m" x
+    (m, bm) <- introScopeVar "q" x
     let s = genPatternNames "s" pos
     let t = genPatternNames "t" pos
     let bs s = mapM (\(s, Position binders arg) -> do
@@ -108,7 +108,7 @@ traversal x scope name extras no_args ret bargs args var_case sem funsem = do
 
 genUpRenS :: Binder -> TId -> GenM Definition
 genUpRenS b z = do
-  ((m,n), bs) <- introRenScopeS ("m", "n")
+  ((m,n), bs) <- introRenScopeS ("q", "p")
   (xi, bxi) <- genRenS "xi" (m,n)
   let (_, bpms) = variadicScopeParameters b
       m' = skope_ext m z b
@@ -120,7 +120,7 @@ genUpRenS b z = do
 
 genRenaming :: TId -> GenM FixpointBody
 genRenaming x = do
-  ((m,n),bs) <- introRenScope ("m", "n") x
+  ((m,n),bs) <- introRenScope ("q", "p") x
   (xi,bxi) <- genRen x "xi" (m,n)
   toVarT <- toVar x xi
   x' <- extend_ x
@@ -150,7 +150,7 @@ upsubstType b z m sigma = do
 
 genUpS :: Binder -> TId -> GenM Definition
 genUpS b z = do
-  ((m,n), bs) <- introSubstScopeS ("m", "n") z
+  ((m,n), bs) <- introSubstScopeS ("q", "p") z
   (sigma, b_sigma) <- genSubstS "sigma" (m,n) z
   sigma <- upsubstType b z n sigma
   let (pms, bpms) = variadicScopeParameters b
@@ -165,7 +165,7 @@ genUpS b z = do
 
 genSubstitution :: TId -> GenM FixpointBody
 genSubstitution x = do
-  ((m, n), bmn) <- introRenScope ("m", "n") x
+  ((m, n), bmn) <- introRenScope ("q", "p") x
   (sigma, bs) <- genSubst x "sigma" (m,n)
   toVarT <- toVar x sigma
   x' <- extend_ x
@@ -185,11 +185,11 @@ genSubstitutions xs = do
 -- 6. Generation of left identity lemma
 genUpId :: Binder -> TId -> GenM Definition
 genUpId y z = do
-  (m, bm) <- introScopeVar "m" z
+  (m, bm) <- introScopeVar "q" z
   m_var <- toVar z m
   (sigma, b_sigma) <- genSubstS "sigma" (m_var, m) z
   (eq, b_eq) <- genEq z "Eq" sigma (var z m)
-  n <- tfresh "n"
+  n <- tfresh "p"
   m <- upSubst z [y] m
   let (pms, bpms) = variadicScopeParametersImplicit y
   let ret = equiv_ (idApp (up_ y z) (pms ++ [sigma])) (var z m)
@@ -204,7 +204,7 @@ genUpId y z = do
 
 genIdL :: TId -> GenM FixpointBody
 genIdL x = do
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (sigma, bs) <- genSubst x "sigma" (m, m)
   xs <- substOf x
   eqs' <- mapM (\y -> liftM2 idApp (return $ var_ y) (fmap substTerms (castSubst x y m))) xs
@@ -226,12 +226,12 @@ genUpRenRen :: Binder -> TId -> GenM Definition
 genUpRenRen y z = do
  (k, bk) <- introScopeVarS "k"
  (l, bl) <- introScopeVarS "l"
- (m, bm) <- introScopeVarS "m"
+ (m, bm) <- introScopeVarS "q"
  (xi, bxi) <- genRenS "xi" (k, l)
  (tau, btau) <- genRenS "tau" (l, m)
  (theta, btheta) <- genRenS "theta" (k, m)
  (eq, b_eq) <- genEq z "Eq" (xi >>> tau) theta
- n <- tfresh "n"
+ n <- tfresh "p"
  let (pms, bpms) = variadicScopeParametersImplicit y
  let ret = equiv_ (idApp (upRen_ y z) (pms ++ [xi]) >>> idApp (upRen_ y z) (pms ++ [tau]) ) (idApp (upRen_ y z) (pms ++ [theta]))
  shift <- patternSId z y
@@ -242,7 +242,7 @@ genUpRenRen y z = do
 genCompRenRen :: TId -> GenM FixpointBody
 genCompRenRen x = do
   ((k,l), bkl) <- introRenScope ("k", "l") x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (xi, bxi) <- genRen x "xi" (m,k)
   (zeta,bzeta) <- genRen x "zeta" (k,l)
   (rho, brho) <- genRen x "rho" (m, l)
@@ -268,7 +268,7 @@ genCompRenRen x = do
 genLemmaRenRenComp :: TId -> GenM (Lemma, Lemma) 
 genLemmaRenRenComp x = do
   ((k,l), bkl) <- introRenScope ("k", "l") x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (xi, bxi) <- genRen x "xi" (m,k)
   (zeta,bzeta) <- genRen x "zeta" (k,l)
   xs <- substOf x
@@ -276,9 +276,9 @@ genLemmaRenRenComp x = do
   let sigmazeta = zipWith (>>>) (substTerms xi) (substTerms zeta)
   let s = "s"
   let ret = TermEq (idApp (ren_ x') (substTerms zeta ++ [idApp (ren_ x) $ substTerms xi  ++ [TermId s]])) (idApp (ren_ x) (sigmazeta ++ [TermId s]))
-  let proof = idApp (compRenRen_ x) (substTerms xi ++ substTerms zeta ++ map (const TermUnderscore) xs ++ map (const (TermAbs [BinderName "n"] eq_refl_)) xs ++ [TermId s])
+  let proof = idApp (compRenRen_ x) (substTerms xi ++ substTerms zeta ++ map (const TermUnderscore) xs ++ map (const (TermAbs [BinderName "p"] eq_refl_)) xs ++ [TermId s])
   let ret' = TermEq ((idApp (ren_ x) (substTerms xi)) >>> (idApp (ren_ x') (substTerms zeta))) (idApp (ren_ x) sigmazeta) 
-  let proof' = TermApp fext_ [TermAbs [BinderName "n"] (idApp (renRen_ x) (substTerms xi ++ substTerms zeta ++ [TermId "n"]))]
+  let proof' = TermApp fext_ [TermAbs [BinderName "p"] (idApp (renRen_ x) (substTerms xi ++ substTerms zeta ++ [TermId "p"]))]
   return (Lemma (renRen_ x) (bkl ++ bm ++ bxi ++ bzeta ++ [BinderNameType [s] (idApp x (substTerms m))]) ret (ProofExact proof),
           Lemma (renRen'_ x) (bkl ++ bm ++ bxi ++ bzeta) ret' (ProofExact proof'))
 
@@ -288,13 +288,13 @@ genUpRenSubst :: Binder -> TId -> GenM Definition
 genUpRenSubst y z = do
   (k, bk) <- introScopeVarS "k"
   (l, bl) <- introScopeVarS "l"
-  (m, bm) <- introScopeVar "m" z
+  (m, bm) <- introScopeVar "q" z
   (xi, bxi) <- genRenS "xi" (k, l)
   (tau, btau) <- genSubstS "tau" (l, m) z
   (theta, btheta) <- genSubstS "theta" (k, m) z
   m_var <- toVar z m
   (eq, b_eq) <- genEq z "Eq" (xi >>> tau) theta
-  n <- tfresh "n"
+  n <- tfresh "p"
   m <- upSubst z [y] m
   let (pms, bpms) = variadicScopeParametersImplicit y
   let ret = equiv_ (idApp (upRen_ y z) (pms ++ [xi]) >>> idApp (up_ y z) (pms ++ [tau]) ) (idApp (up_ y z) (pms ++ [theta]))
@@ -303,12 +303,12 @@ genUpRenSubst y z = do
   let s = eqTrans_ (scons_p_comp' (TermId n)) (scons_p_congr_  (TermAbs [BinderName "z"] (eqTrans_ (scons_p_tail' (TermApp xi [TermId "z"])) (t (TermId "z")))) (TermAbs [BinderName "z"] (scons_p_head' (TermId "z"))))
   let u = case y of Single z' ->  if z == z' then matchFin_ (TermId n) t eq_refl_  else t (TermId n)
                     BinderList p z' -> if z == z' then s else t (TermId n)
-  return $ Definition (up_ren_subst_ y z) (bpms ++ bk ++ bl ++ bm ++ bxi ++ btau ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "n"] u)
+  return $ Definition (up_ren_subst_ y z) (bpms ++ bk ++ bl ++ bm ++ bxi ++ btau ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)
 
 genCompRenSubst :: TId -> GenM FixpointBody
 genCompRenSubst x = do
   ((k,l), bkl) <- introRenScope ("k", "l") x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (xi, bxi) <- genRen x "xi" (m,k)
   (zeta,bzeta) <- genSubst x "tau" (k,l)
   (rho, brho) <- genSubst x "theta" (m, l)
@@ -330,7 +330,7 @@ genCompRenSubst x = do
 genLemmaCompRenSubst :: TId -> GenM (Lemma, Lemma) 
 genLemmaCompRenSubst x = do
   ((k,l), bkl) <- introRenScope ("k", "l") x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (sigma, bsigma) <- genSubst x "sigma" (m,k)
   (zeta,bzeta) <- genRen x "zeta" (k,l)
   xs <- substOf x
@@ -340,9 +340,9 @@ genLemmaCompRenSubst x = do
                 zeta' <- castSubst x y zeta
                 return $ sigma >>> idApp (ren_ y) (substTerms zeta')) (zip xs  (substTerms sigma))
   let ret = TermEq (idApp (ren_ x') (substTerms zeta ++ [idApp (subst_ x) $ substTerms sigma  ++ [TermId s]])) (idApp (subst_ x) (sigmazeta ++ [TermId s]))
-  let proof = idApp (compSubstRen_ x) (substTerms sigma ++ substTerms zeta ++ map (const TermUnderscore) xs ++ map (const (TermAbs [BinderName "n"] eq_refl_)) xs ++ [TermId s])
+  let proof = idApp (compSubstRen_ x) (substTerms sigma ++ substTerms zeta ++ map (const TermUnderscore) xs ++ map (const (TermAbs [BinderName "p"] eq_refl_)) xs ++ [TermId s])
   let ret' = TermEq ((idApp (subst_ x) (substTerms sigma)) >>> (idApp (ren_ x') (substTerms zeta))) (idApp (subst_ x) sigmazeta) 
-  let proof' = TermApp fext_ [TermAbs [BinderName "n"] (idApp ("compRen_" ++ x) (substTerms sigma ++ substTerms zeta ++ [TermId "n"]))]
+  let proof' = TermApp fext_ [TermAbs [BinderName "p"] (idApp ("compRen_" ++ x) (substTerms sigma ++ substTerms zeta ++ [TermId "p"]))]
   return (Lemma ("compRen_" ++ x) (bkl ++ bm ++ bsigma ++ bzeta ++ [BinderNameType [s] (idApp x (substTerms m))]) ret (ProofExact proof),
           Lemma ("compRen'_" ++ x) (bkl ++ bm ++ bsigma ++ bzeta) ret' (ProofExact proof'))
 
@@ -352,12 +352,12 @@ genUpSubstRen :: Binder -> TId -> GenM Definition
 genUpSubstRen y z = do
   (k, bk) <- introScopeVarS "k"
   (l, bl) <- introScopeVar "l" z
-  (m, bm) <- introScopeVar "m" z
+  (m, bm) <- introScopeVar "q" z
   (sigma, bsigma) <- genSubstS "sigma" (k, l) z
   (zeta, bzeta) <- genRen z "zeta" (l, m)
   (theta, btheta) <- genSubstS "theta" (k, m) z
   (eq, b_eq) <- genEq z "Eq" (sigma >>> idApp (ren_ z) (substTerms zeta)) theta
-  n <- tfresh "n"
+  n <- tfresh "p"
   m <- upSubst z [y] m
   zs <- substOf z
   zeta' <- upSubst z [y] zeta
@@ -373,14 +373,14 @@ genUpSubstRen y z = do
                 (ap_ [idApp (ren_ z) pat, TermApp eq [n]]))
   let hd = TermAbs [BinderName "x"] (ap_ [var z m, scons_p_head' (TermId "x")])
   let u = case y of Single z' ->  if z == z' then  matchFin_ (TermId n) t eq_refl_ else t (TermId n)
-                    BinderList p z' -> if z == z' then ((eqTrans_ (scons_p_comp' (TermId "n")) (scons_p_congr_  (TermAbs [BinderName "n"] (t' (TermId "n") z') ) hd))) else t' (TermId n) z'
-  return $ Definition (up_subst_ren_ y z) (bpms ++ bk ++ bl ++ bm ++ bsigma ++ bzeta ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "n"] u)
+                    BinderList p z' -> if z == z' then ((eqTrans_ (scons_p_comp' (TermId "p")) (scons_p_congr_  (TermAbs [BinderName "p"] (t' (TermId "p") z') ) hd))) else t' (TermId n) z'
+  return $ Definition (up_subst_ren_ y z) (bpms ++ bk ++ bl ++ bm ++ bsigma ++ bzeta ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)
 
 
 genCompSubstRen :: TId -> GenM FixpointBody
 genCompSubstRen x = do
   ((k,l), bkl) <- introRenScope ("k", "l") x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (sigma, bsigma) <- genSubst x "sigma" (m,k)
   (zeta,bzeta) <- genRen x "zeta" (k,l)
   (theta, btheta) <- genSubst x "theta" (m, l)
@@ -407,7 +407,7 @@ genCompSubstRen x = do
 genLemmaCompSubstRen :: TId -> GenM (Lemma, Lemma)
 genLemmaCompSubstRen x = do
   ((k,l), bkl) <- introRenScope ("k", "l") x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (xi, bxi) <- genRen x "xi" (m,k)
   (zeta,bzeta) <- genSubst x "tau" (k,l)
   xs <- substOf x
@@ -415,9 +415,9 @@ genLemmaCompSubstRen x = do
   let sigmazeta = zipWith (>>>) (substTerms xi) (substTerms zeta)
   let s = "s"
   let ret = TermEq (idApp (subst_ x') (substTerms zeta ++ [idApp (ren_ x) $ substTerms xi  ++ [TermId s]])) (idApp (subst_ x) (sigmazeta ++ [TermId s]))
-  let proof = idApp (compRenSubst_ x) (substTerms xi ++ substTerms zeta ++ map (const TermUnderscore) xs ++ map (const (TermAbs [BinderName "n"] eq_refl_)) xs ++ [TermId s])
+  let proof = idApp (compRenSubst_ x) (substTerms xi ++ substTerms zeta ++ map (const TermUnderscore) xs ++ map (const (TermAbs [BinderName "p"] eq_refl_)) xs ++ [TermId s])
   let ret' = TermEq ((idApp (ren_ x) (substTerms xi)) >>> (idApp (subst_ x') (substTerms zeta))) (idApp (subst_ x) sigmazeta) 
-  let proof' = TermApp fext_ [TermAbs [BinderName "n"] (idApp ("renComp_" ++ x) (substTerms xi ++ substTerms zeta ++ [TermId "n"]))]
+  let proof' = TermApp fext_ [TermAbs [BinderName "p"] (idApp ("renComp_" ++ x) (substTerms xi ++ substTerms zeta ++ [TermId "p"]))]
   return (Lemma ("renComp_" ++ x) (bkl ++ bm ++ bxi ++ bzeta ++ [BinderNameType [s] (idApp x (substTerms m))]) ret (ProofExact proof),
           Lemma ("renComp'_" ++ x) (bkl ++ bm ++ bxi ++ bzeta) ret' (ProofExact proof'))
 
@@ -466,12 +466,12 @@ genUpSubstSubst :: Binder -> TId -> GenM Definition
 genUpSubstSubst y z = do
   (k, bk) <- introScopeVarS "k"
   (l, bl) <- introScopeVar "l" z
-  (m, bm) <- introScopeVar "m" z
+  (m, bm) <- introScopeVar "q" z
   (sigma, bsigma) <- genSubstS "sigma" (k, l) z
   (tau, btau) <- genSubst z "tau" (l, m)
   (theta, btheta) <- genSubstS "theta" (k, m) z
   (eq, b_eq) <- genEq z "Eq" (sigma >>> idApp (subst_ z) (substTerms tau)) theta
-  n <- tfresh "n"
+  n <- tfresh "p"
  -- m <- upSubst z [y] m
   m' <- upSubst z [y] m
   l' <- upSubst z [y] l
@@ -493,8 +493,8 @@ genUpSubstSubst y z = do
   let hd = TermAbs [BinderName "x"] (idApp "scons_p_head'" [TermUnderscore , TermAbs [BinderName "z"] (idApp (ren_ z) (shift ++ [TermApp (var z m) [TermId "z"]] )), TermId "x"])              
   -- let hd = TermAbs [BinderName "x"] (idApp "scons_p_head'" [TermUnderscore, TermAbs [BinderName "z"] (idApp (ren_ z) (shift ++ [TermUnderscore])), TermId "x"])
   let u = case y of Single z' ->  if z == z' then  matchFin_ (TermId n) t eq_refl_ else t (TermId n)
-                    BinderList p z' -> if z == z' then ((eqTrans_ (idApp "scons_p_comp'" [(idApp "zero_p" [TermId p]) >>> (var z l'), TermUnderscore, TermUnderscore, TermId "n"]) (scons_p_congr_  (TermAbs [BinderName "n"] (t' (TermId "n") z') ) hd))) else t' (TermId n) z'
-  return $ Definition (up_subst_subst_ y z) (bpms ++ bk ++ bl ++ bm ++ bsigma ++ btau ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "n"] u)
+                    BinderList p z' -> if z == z' then ((eqTrans_ (idApp "scons_p_comp'" [(idApp "zero_p" [TermId p]) >>> (var z l'), TermUnderscore, TermUnderscore, TermId "p"]) (scons_p_congr_  (TermAbs [BinderName "p"] (t' (TermId "p") z') ) hd))) else t' (TermId n) z'
+  return $ Definition (up_subst_subst_ y z) (bpms ++ bk ++ bl ++ bm ++ bsigma ++ btau ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)
 
 
 
@@ -543,12 +543,12 @@ genUpSubstSubstNoRen :: Binder -> TId -> GenM Definition
 genUpSubstSubstNoRen y z = do
   (k, bk) <- introScopeVarS "k"
   (l, bl) <- introScopeVar "l" z
-  (m, bm) <- introScopeVar "m" z
+  (m, bm) <- introScopeVar "q" z
   (sigma, bsigma) <- genSubstS "sigma" (k, l) z
   (tau, btau) <- genSubst z "tau" (l, m)
   (theta, btheta) <- genSubstS "theta" (k, m) z
   (eq, b_eq) <- genEq z "Eq" (sigma >>> idApp (subst_ z) (substTerms tau)) theta
-  n <- tfresh "n"
+  n <- tfresh "p"
   m' <- upSubst z [y] m
   l' <- upSubst z [y] l
   zeta' <- upSubst z [y] tau
@@ -568,8 +568,8 @@ genUpSubstSubstNoRen y z = do
                 (ap_ [(idApp (subst_ z) pat), TermApp eq [n]])))
   let hd = TermAbs [BinderName "x"] (idApp "scons_p_head'" [TermUnderscore, TermAbs [BinderName "z"] (idApp (subst_ z) (pat ++ [TermApp (var z m) [TermId "z"]])), TermId "x"])
   let u = case y of Single z' ->  if z == z' then  matchFin_ (TermId n) t eq_refl_ else t (TermId n)
-                    BinderList p z' -> if z == z' then ((eqTrans_ (idApp "scons_p_comp'" [(idApp "zero_p" [TermId p]) >>> (var z l'), TermUnderscore, TermUnderscore, TermId "n"]) (scons_p_congr_  (TermAbs [BinderName "n"] (t' (TermId "n") z') ) hd))) else t' (TermId n) z'
-  return $ Definition (up_subst_subst_ y z) (bpms ++ bk ++ bl ++ bm ++ bsigma ++ btau ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "n"] u)
+                    BinderList p z' -> if z == z' then ((eqTrans_ (idApp "scons_p_comp'" [(idApp "zero_p" [TermId p]) >>> (var z l'), TermUnderscore, TermUnderscore, TermId "p"]) (scons_p_congr_  (TermAbs [BinderName "p"] (t' (TermId "p") z') ) hd))) else t' (TermId n) z'
+  return $ Definition (up_subst_subst_ y z) (bpms ++ bk ++ bl ++ bm ++ bsigma ++ btau ++ btheta ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)
 
 
 
@@ -581,7 +581,7 @@ genUpSubstSubstNoRen y z = do
 genCompSubstSubst :: TId -> GenM FixpointBody
 genCompSubstSubst x = do
   ((k,l), bkl) <- introRenScope ("k", "l") x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (sigma, bsigma) <- genSubst x "sigma" (m,k)
   (tau,btau) <- genSubst x "tau" (k,l)
   (theta, btheta) <- genSubst x "theta" (m, l)
@@ -607,7 +607,7 @@ genCompSubstSubst x = do
 genLemmaCompSubstSubst :: TId -> GenM (Lemma, Lemma) 
 genLemmaCompSubstSubst x = do
   ((k,l), bkl) <- introRenScope ("k", "l") x
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   (sigma, bsigma) <- genSubst x "sigma" (m,k)
   (tau,btau) <- genSubst x "tau" (k,l)
   xs <- substOf x
@@ -617,32 +617,32 @@ genLemmaCompSubstSubst x = do
                 tau' <- castSubst x y tau
                 return $ sigma >>> idApp (subst_ y) (substTerms tau')) (zip xs  (substTerms sigma))
   let ret = TermEq (idApp (subst_ x') (substTerms tau ++ [idApp (subst_ x) $ substTerms sigma  ++ [TermId s]])) (idApp (subst_ x) (sigmatau ++ [TermId s]))
-  let proof = idApp (compSubstSubst_ x) (substTerms sigma ++ substTerms tau ++ map (const TermUnderscore) xs ++ map (const (TermAbs [BinderName "n"] eq_refl_)) xs ++ [TermId s])
+  let proof = idApp (compSubstSubst_ x) (substTerms sigma ++ substTerms tau ++ map (const TermUnderscore) xs ++ map (const (TermAbs [BinderName "p"] eq_refl_)) xs ++ [TermId s])
   let ret' = TermEq ((idApp (subst_ x) (substTerms sigma)) >>> (idApp (subst_ x') (substTerms tau))) (idApp (subst_ x) sigmatau) 
-  let proof' = TermApp fext_ [TermAbs [BinderName "n"] (idApp ("compComp_" ++ x) (substTerms sigma ++ substTerms tau ++ [TermId "n"]))]
+  let proof' = TermApp fext_ [TermAbs [BinderName "p"] (idApp ("compComp_" ++ x) (substTerms sigma ++ substTerms tau ++ [TermId "p"]))]
   return (Lemma ("compComp_" ++ x) (bkl ++ bm ++ bsigma ++ btau ++ [BinderNameType [s] (idApp x (substTerms m))]) ret (ProofExact proof),
           Lemma ("compComp'_" ++ x) (bkl ++ bm ++ bsigma ++ btau) ret' (ProofExact proof'))
 
 -- 8. Extensionsality lemmas
 genUpExtRen :: Binder -> TId -> GenM Definition
 genUpExtRen y z = do
-  (m, bm) <- introScopeVarS "m"
-  (n, bn) <- introScopeVarS "n"
+  (m, bm) <- introScopeVarS "q"
+  (n, bn) <- introScopeVarS "p"
   (xi, bxi) <- genRenS "xi" (m, n)
   (zeta,bzeta) <- genRenS "zeta" (m,n)
   (eq, b_eq) <- genEq z "Eq" xi zeta
   let (pms,bpms) = variadicScopeParametersImplicit y
   let ret = equiv_ (idApp (upRen_ y z) (pms ++ [xi])) (idApp (upRen_ y z) (pms ++[zeta]))
-  n <- tfresh "n"
+  n <- tfresh "p"
   let t n = TermApp eq [n]
   let s = matchFin_ (TermId n) (\n -> ap_ [shift_, t n]) eq_refl_
   let u = case y of Single z' -> if z == z' then s else t (TermId n)
-                    BinderList p z' -> if z == z' then scons_p_congr_ (TermAbs [BinderName "n"] (ap_ [idApp shift_p_ [TermId p], t (TermId "n")])) (TermAbs [BinderName "n"] eq_refl_) else t (TermId n)
-  return $ Definition (upExtRen_ y z) (bpms ++ bm ++ bn ++ bxi ++ bzeta ++ b_eq) (Just ret) (TermAbs [BinderName "n"] u)
+                    BinderList p z' -> if z == z' then scons_p_congr_ (TermAbs [BinderName "p"] (ap_ [idApp shift_p_ [TermId p], t (TermId "p")])) (TermAbs [BinderName "p"] eq_refl_) else t (TermId n)
+  return $ Definition (upExtRen_ y z) (bpms ++ bm ++ bn ++ bxi ++ bzeta ++ b_eq) (Just ret) (TermAbs [BinderName "p"] u)
 
 genExtRen :: TId -> GenM FixpointBody
 genExtRen x = do
-  ((m,n), bmn) <- introRenScope ("m", "n") x
+  ((m,n), bmn) <- introRenScope ("q", "p") x
   (xi, bxi) <- genRen x "xi" (m,n)
   (zeta, bzeta) <- genRen x "zeta" (m,n)
   xs <- substOf x
@@ -658,24 +658,24 @@ genExtRen x = do
 
 genUpExt :: Binder -> TId -> GenM Definition
 genUpExt y z = do
-  (m, bm) <- introScopeVarS "m"
-  (n, bn) <- introScopeVar "n" z
+  (m, bm) <- introScopeVarS "q"
+  (n, bn) <- introScopeVar "p" z
   (sigma, bsigma) <- genSubstS "sigma" (m, n) z
   (tau,btau) <- genSubstS "tau" (m,n) z
   (eq, b_eq) <- genEq z "Eq" sigma tau
   let (pms, bpms) = variadicScopeParametersImplicit y
   let ret = equiv_ (idApp (up_ y z) (pms ++ [sigma])) (idApp (up_ y z) (pms ++ [tau]))
   shift <- patternSId z y
-  n <- tfresh "n"
+  n <- tfresh "p"
   hasRen <- hasRenamings z
   let t n = ap_ [idApp (if hasRen then ren_ z else subst_ z) shift, TermApp eq [n]]
   let u = case y of Single z' -> if z == z' then matchFin_ (TermId n) t eq_refl_ else t (TermId n)
-                    BinderList p z' -> if z == z' then scons_p_congr_ (TermAbs [BinderName "n"] (t (TermId "n"))) (TermAbs [BinderName "n"] eq_refl_) else t (TermId n)
-  return $ Definition (upExt_ y z) (bpms ++ bm ++ bn ++ bsigma ++ btau ++ b_eq ) (Just ret) (TermAbs [BinderName "n"] u)
+                    BinderList p z' -> if z == z' then scons_p_congr_ (TermAbs [BinderName "p"] (t (TermId "p"))) (TermAbs [BinderName "p"] eq_refl_) else t (TermId n)
+  return $ Definition (upExt_ y z) (bpms ++ bm ++ bn ++ bsigma ++ btau ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)
 
 genExt :: TId -> GenM FixpointBody
 genExt x = do
-  ((m,n), bmn) <- introRenScope ("m", "n") x
+  ((m,n), bmn) <- introRenScope ("q", "p") x
   (sigma, bsigma) <- genSubst x "sigma" (m,n)
   (tau, btau) <- genSubst x "tau" (m,n)
   xs <- substOf x
@@ -693,8 +693,8 @@ genExt x = do
 -- 9. Coincidence of instantiation of renamings and substitutions
 genUpRinstInst :: Binder -> TId -> GenM Definition
 genUpRinstInst b z = do
-  (m, bm) <- introScopeVarS "m"
-  (n, bn) <- introScopeVar "n" z
+  (m, bm) <- introScopeVarS "q"
+  (n, bn) <- introScopeVar "p" z
   n_var <- toVar z n
   (xi, bxi) <- genRenS "xi" (m, n_var)
   (sigma, bsigma) <- genSubstS "sigma" (m, n) z
@@ -704,15 +704,15 @@ genUpRinstInst b z = do
   let ret = equiv_ (idApp (upRen_ b z) (pms ++ [xi]) >>> var z n') (idApp (up_ b z) (pms ++ [sigma]))
   shift <- patternSId z b
   let t n = ap_ [idApp (ren_ z) shift, TermApp eq [n]]
-  n <- tfresh "n"
+  n <- tfresh "p"
   let s = eqTrans_ (idApp "scons_p_comp'" [TermUnderscore, TermUnderscore, var z n', TermId n]) (scons_p_congr_ (TermAbs [BinderName n] (t (TermId n))) (TermAbs [BinderName "z"] eq_refl_))
   let u = case b of Single z' ->  if z == z' then matchFin_ (TermId n) t (eq_refl_)  else t (TermId n)
                     BinderList p z' -> if z == z' then s else t (TermId n)
-  return $ Definition (up_rinstInst_ b z) (bpms ++ bm ++ bn ++ bxi ++ bsigma ++ b_eq ) (Just ret) (TermAbs [BinderName "n"] u)
+  return $ Definition (up_rinstInst_ b z) (bpms ++ bm ++ bn ++ bxi ++ bsigma ++ b_eq ) (Just ret) (TermAbs [BinderName "p"] u)
 
 genRinstInst :: TId -> GenM FixpointBody
 genRinstInst x = do
-  ((m,n), bmn) <- introRenScope ("m", "n") x
+  ((m,n), bmn) <- introRenScope ("q", "p") x
   (xi, bxi) <- genRen x "xi" (m,n)
   (sigma, bsigma) <- genSubst x "sigma" (m,n)
   xs <- substOf x
@@ -731,21 +731,21 @@ genRinstInst x = do
 
 genLemmaRinstInst :: TId -> GenM Lemma
 genLemmaRinstInst x = do
-  ((m,n), bmn) <- introRenScope ("m", "n") x
+  ((m,n), bmn) <- introRenScope ("q", "p") x
   (xi, bxi) <- genRen x "xi" (m,n)
   xs <- substOf x
   xis' <- mapM (\(y, xi) -> do
     n' <- castSubst x y n
     return$  xi >>> var y n') (zip xs (substTerms xi))
   let ret = TermEq (idApp (ren_ x) (substTerms xi)) (idApp (subst_ x) xis')
-  let proof = TermApp fext_ [TermAbs [BinderName "x"] $ idApp (rinstInst_ x) (substTerms xi ++ map (const TermUnderscore) xs ++ (map (const (TermAbs [BinderName "n"] eq_refl_)) xs) ++ [TermId "x"])]
+  let proof = TermApp fext_ [TermAbs [BinderName "x"] $ idApp (rinstInst_ x) (substTerms xi ++ map (const TermUnderscore) xs ++ (map (const (TermAbs [BinderName "p"] eq_refl_)) xs) ++ [TermId "x"])]
   return (Lemma (rinstInstFun_ x) (bmn ++ bxi) ret (ProofExact proof))
 
 -- 9. Second identity lemma
 
 genLemmaVarL :: TId -> GenM Lemma
 genLemmaVarL x = do
-  ((m,n), bmn) <- introRenScope ("m", "n") x
+  ((m,n), bmn) <- introRenScope ("q", "p") x
   (sigma,bsigma) <- genSubst x "sigma" (m,n)
   sigma' <- toVar x sigma
   let ret = TermEq ((var x m) >>> (idApp (subst_ x) (substTerms sigma))) sigma'
@@ -754,7 +754,7 @@ genLemmaVarL x = do
 
 genLemmaVarLRen :: TId -> GenM Lemma
 genLemmaVarLRen x = do
-  ((m,n), bmn) <- introRenScope ("m", "n") x
+  ((m,n), bmn) <- introRenScope ("q", "p") x
   (xi,bxi) <- genRen x "xi" (m,n)
   xi' <- (toVar x xi)
   x' <- extend_ x
@@ -764,18 +764,18 @@ genLemmaVarLRen x = do
 
 genLemmaInstId :: TId -> GenM Lemma
 genLemmaInstId x = do
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   xs <- substOf x
   vars <- mapM (\y -> liftM2 idApp (return $ var_ y) (liftM substTerms (castSubst x y m))) xs 
   x' <- extend_ x
   let mid = if x == x' then TermConst (Id) else TermId inj_
       ret = TermEq (idApp (subst_ x) vars) mid
-  let proof = TermApp fext_ [TermAbs [BinderName "x"] (idApp (idSubst_ x) ( vars ++ (map (const (TermAbs [BinderName "n"] eq_refl_)) xs) ++ [TermApp (TermConst Id) [TermId "x"]]))] 
+  let proof = TermApp fext_ [TermAbs [BinderName "x"] (idApp (idSubst_ x) ( vars ++ (map (const (TermAbs [BinderName "p"] eq_refl_)) xs) ++ [TermApp (TermConst Id) [TermId "x"]]))] 
   return $ Lemma ("instId_" ++ x) bm ret (ProofExact proof)
 
 genLemmaRinstId :: TId -> GenM Lemma
 genLemmaRinstId x = do
-  (m, bm) <- introScopeVar "m" x
+  (m, bm) <- introScopeVar "q" x
   xs <- substOf x
   vars <- mapM (\y -> liftM2 idApp (return $ var_ y) (liftM substTerms (castSubst x y m))) xs
   x' <- extend_ x
