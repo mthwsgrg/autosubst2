@@ -36,7 +36,7 @@ genAutomation varSorts xs substSorts upList = do
                                 b <- (isFeature x)
                                 return $ not b) sortsWithRenamings
   let substFunctions = map subst_ substSorts ++  (map ren_ sortsWithRenamings)
-      upFunctions = ["up_ren"] ++  (map (\(x,y) -> upRen_ x y) upRenList) ++ map (\(x,y) -> up_ x y) upList
+      upFunctions = ["up_ren"] ++ ["upRen_n"] ++  (map (\(x,y) -> upRen_ x y) upRenList) ++ map (\(x,y) -> up_ x y) upList
       monadLemmas = concatMap (\x -> ["instId_" ++ x] ++ ["compComp_" ++ x, "compComp'_" ++ x]) substSorts
                     ++ concatMap (\x -> ["rinstId_" ++ x, "compRen_" ++x, "compRen'_" ++ x, "renComp_" ++ x, "renComp'_" ++ x, renRen_ x, renRen'_ x]) sortsWithRenamings
       varLemmas = concatMap (\x -> ["varL_" ++ x]) varSorts ++ concatMap (\x ->  ["varLRen_" ++ x]) varRenSorts

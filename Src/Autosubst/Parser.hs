@@ -324,7 +324,7 @@ reservedIds = S.fromList
   -- Identifiers used by Autosubst
   "fin", "shift", "None", "Some", "scons", "var_zero", "fun_comp", "ap_ren", 
   "ap", "apc", "up_ren_ren", "id", "scons_eta", "scons_comp", "scons_eta_id", 
-  "up_ren", "size_ind", retract_, "retract_inj", "retract_option", "lift",
+  "up_ren", "upRen_n", "size_ind", retract_, "retract_inj", "retract_option", "lift",
   "get_In", "some_none_explosion", "Some_inj",
   -- Additional identifiers used by Autosubst (ExtV is not working)
   "inl", "inr", "Ext",  "ext_zero"
