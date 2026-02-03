@@ -28,6 +28,7 @@ library
                      , Autosubst.PrintScoped
                      , Autosubst.PrintUnscoped
                      , Autosubst.GenAutomation
+                     , Autosubst.GenTactic
   build-depends:       base >= 4.7 && < 5
                      , parsec >= 3.1.11
                      , containers >= 0.5
