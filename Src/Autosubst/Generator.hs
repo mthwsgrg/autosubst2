@@ -809,8 +809,3 @@ genSentencesMod b xs dps upList = do
   congruences <- mapM genCongruences xs
   return $ nonEmptySection (concat xs) (concat hypoSentences ++ [SentenceInductive (Inductive types) | (not . null) types] ++ map SentenceDefinition inFcts ++ [SentenceFixpoint (Fixpoint True inProofs) | not (null inProofs) && b]++
    retractAssumptions ++  (concat depSmarts) ++ map SentenceLemma (concat congruences)  ++ retracts)
-
-
-
-genLtac :: GenM Ltac
-genLtac = return "(** Below is the code for as_apply**)"

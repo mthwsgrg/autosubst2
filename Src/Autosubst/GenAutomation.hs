@@ -54,7 +54,8 @@ genAutomation varSorts xs substSorts upList = do
               , SentenceId "Tactic Notation \"asimpl\" \"in\" hyp(J) := revert J; asimpl; intros J."
               , autocase
               , SentenceTacticNotation ["\"asimpl\"", "\"in\"", "\"*\""] (TacticSeq [TacticId "auto_unfold in *", TacticRewrite (Just "in *") substFunctions upFunctions (monadLemmas ++ varLemmas)])
-              ] ++  (genSubstifyTactics sortsWithRenamings)
+              ] ++  (genSubstifyTactics sortsWithRenamings) ++ genAsApply 
+
 
 -- Generation of renamify/substify tactics
 genSubstifyTactics :: [TId] ->  [Sentence]
@@ -152,3 +153,6 @@ genUpNotationPrint (Single b,y) = do
         up_instance = SentenceInstance bs ("Up" ++ "_" ++ b ++ "_" ++ y) (idApp ("Up_" ++ y) [TermUnderscore, TermUnderscore]) (idApp ("@" ++ up_ (Single b) y) ([m] ++ substTerms n))
     return $ [up_not_print, up_instance]
 genUpNotationPrint _ = return []
+
+genAsApply :: [Sentence]
+genAsApply = [(SentenceId "(** Below is the code for as_apply **)")]
