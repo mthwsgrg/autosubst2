@@ -14,6 +14,7 @@ module Autosubst.Types
   , Argument(..)
   , Signature(..)
   , Prover (..)
+  , Ltac
   , argSorts
   , binderSorts
   ) where
@@ -61,6 +62,9 @@ binderSorts (BinderList _ x) = [x]
 
 -- Arguments: Either an atomic identifer or a functor application with possible parameters and again a list of arguments
 data Argument = Atom TId | FunApp FId String [Argument] deriving (Eq, Show)
+
+
+type Ltac = String
 
 -- Yields all argument sorts
 argSorts :: Argument -> [TId]
