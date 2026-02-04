@@ -175,8 +175,5 @@ genmString x = return (show x)
 
 genBottomJunk :: [TId] -> [TId] -> [TId] ->[(Binder,TId)] -> GenM [Sentence]
 genBottomJunk varSorts xs substSorts upList = do
-  cs  <- constructors (head xs)
-  str <- genmString (head cs)
-  return $ [SentenceId "(** Some Junk below **)",SentenceId str]
-                      
-  
+  csListList  <- mapM constructors xs
+  return $ [SentenceId "(** Some Junk below **)"] ++ (map SentenceId (map show (concat csListList))) 
