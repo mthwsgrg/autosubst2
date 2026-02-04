@@ -50,13 +50,13 @@ data Pattern = PatternConstructor Term Identifiers | PatternUnderscore
 -- MG: Tactic Syntax follows
 
 data TacticTerm = JustTerm Term -- When I want to use the type Term directly in a tactic
-                | InContext Term -- Used to specify Terms inside context[] construct in Ltac
+                | InContext Term -- Would print as Terms inside context[] construct in Ltac
                 | JustString String -- If I want to go with just string
 
 data TacticPattern = TacticPatternGoal ([(TacticTerm, TacticTerm)], TacticTerm)
-                   | TacticPattern TacticTerm
+                   | TacticPatternTerm TacticTerm
 
-data TacticMatchItem = MatchTerm TacticTerm |MatchGoal
+data TacticMatchItem = MatchTerm TacticTerm | MatchGoal
 
 data TacticEquation = TacticEquation TacticPattern Tactic
 

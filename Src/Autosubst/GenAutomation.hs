@@ -50,11 +50,13 @@ genAutomation varSorts xs substSorts upList = do
   implicits <- genScopeImplicits
   instances <- genInstances substSorts varSorts
   notation <- genNotation varSorts substSorts upList
+  asApply <- genAsApply varSorts
+  bottomJunk <- genBottomJunk varSorts xs substSorts upList
   return $ implicits  ++ instances ++ notation ++ [unfold, unfold_star, asimpl', SentenceTactic "asimpl" (TacticSeq [TacticRepeat (TacticId "try unfold_funcomp"), TacticId "auto_unfold in *", TacticId "asimpl'", TacticRepeat (TacticId "try unfold_funcomp")])
               , SentenceId "Tactic Notation \"asimpl\" \"in\" hyp(J) := revert J; asimpl; intros J."
               , autocase
               , SentenceTacticNotation ["\"asimpl\"", "\"in\"", "\"*\""] (TacticSeq [TacticId "auto_unfold in *", TacticRewrite (Just "in *") substFunctions upFunctions (monadLemmas ++ varLemmas)])
-              ] ++  (genSubstifyTactics sortsWithRenamings) ++ genAsApply 
+              ] ++  (genSubstifyTactics sortsWithRenamings) ++ asApply ++ bottomJunk
 
 
 -- Generation of renamify/substify tactics
@@ -154,5 +156,27 @@ genUpNotationPrint (Single b,y) = do
     return $ [up_not_print, up_instance]
 genUpNotationPrint _ = return []
 
-genAsApply :: [Sentence]
-genAsApply = [(SentenceId "(** Below is the code for as_apply **)")]
+
+
+-- Generation of as_apply tactic
+
+
+
+genAsApply :: [TId] -> GenM [Sentence]
+genAsApply xs = return $ [SentenceId "(** as_apply follows **)"]
+
+
+
+-- Generation of program data to see what's happening
+
+genmString :: (Show a) =>  a -> GenM String
+genmString x = return (show x)
+
+
+genBottomJunk :: [TId] -> [TId] -> [TId] ->[(Binder,TId)] -> GenM [Sentence]
+genBottomJunk varSorts xs substSorts upList = do
+  cs  <- constructors (head xs)
+  str <- genmString (head cs)
+  return $ [SentenceId "(** Some Junk below **)",SentenceId str]
+                      
+  
