@@ -46,6 +46,22 @@ data MatchItem = MatchItem Term
 
 data Pattern = PatternConstructor Term Identifiers | PatternUnderscore
 
+
+-- MG: Tactic Syntax follows
+
+data TacticTerm = JustTerm Term -- When I want to use the type Term directly in a tactic
+                | InContext Term -- Used to specify Terms inside context[] construct in Ltac
+                | JustString String -- If I want to go with just string
+
+data TacticPattern = TacticPatternGoal ([(TacticTerm, TacticTerm)], TacticTerm)
+                   | TacticPattern TacticTerm
+
+data TacticMatchItem = MatchTerm TacticTerm |MatchGoal
+
+data TacticEquation = TacticEquation TacticPattern Tactic
+
+data TacticMatch = TacticMatch TacticMatchItem [TacticEquation]
+
 data Sentence = SentenceDefinition Definition
               | SentenceClass String [CBinder] [(String, Term)]
               | SentenceInductive Inductive
@@ -67,6 +83,7 @@ data Tactic = TacticRewrite (Maybe String) [String] [String] [String]
               | TacticUnfold [String] (Maybe String)
               | TacticFold [String] (Maybe String)
               | TacticRepeat Tactic
+              | TacticFunction [CBinder] TacticMatch
 
 data Sort = Prop
           | Set
