@@ -7,6 +7,7 @@ import           Autosubst.Names
 import           Autosubst.Syntax
 import           Autosubst.Tactics
 import           Autosubst.Types
+import           Autosubst.GenTactic
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
@@ -157,7 +158,7 @@ genUpNotationPrint (Single b,y) = do
 genUpNotationPrint _ = return []
 
 
-
+{-
 -- Generation of as_apply tactic
 
 
@@ -177,3 +178,4 @@ genBottomJunk :: [TId] -> [TId] -> [TId] ->[(Binder,TId)] -> GenM [Sentence]
 genBottomJunk varSorts xs substSorts upList = do
   csListList  <- mapM constructors xs
   return $ [SentenceId "(** Some Junk below **)"] ++ (map SentenceId (map show (concat csListList))) 
+-}
