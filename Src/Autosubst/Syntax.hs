@@ -51,17 +51,25 @@ data Pattern = PatternConstructor Term Identifiers | PatternUnderscore
 
 data TacticTerm = JustTerm Term -- When I want to use the type Term directly in a tactic
                 | InContext Term -- Would print as Terms inside context[] construct in Ltac
-                | JustString String -- If I want to go with just string
+                | JustString String -- For more flexibility with tactic (useful for underscores, or to refer terms in local context)
 
-data TacticPattern = TacticPatternGoal ([(TacticTerm, TacticTerm)], TacticTerm)
-                   | TacticPatternTerm TacticTerm
+data TacticPattern = TacticPattern TacticTerm
+
+data TacticMatchHyp = HypForm1 TacticTerm TacticPattern
+
+data TacticGoalPattern =  TacticGoalPattern [TacticMatchHyp] TacticPattern
 
 data TacticMatchItem = MatchTerm TacticTerm | MatchGoal
 
-data TacticEquation = TacticEquation TacticPattern Tactic
+data TacticEquation =  TacticEquationTerm TacticPattern Tactic
+                     | TacticEquationGoal TacticGoalPattern Tactic 
 
-data TacticMatch = TacticMatch TacticMatchItem [TacticEquation]
+data TacticMatchKey = TacticSimpleMatch
+                    | TacticLazyMatch
+                    | TacticMultiMatch
 
+data TacticMatch =  TacticMatch TacticMatchKey TacticMatchItem [TacticEquation]
+                
 data Sentence = SentenceDefinition Definition
               | SentenceClass String [CBinder] [(String, Term)]
               | SentenceInductive Inductive
@@ -76,6 +84,7 @@ data Sentence = SentenceDefinition Definition
               | SentenceTacticNotation [String] Tactic
               | SentenceSection String [Sentence]
               | SentenceRequireExport [String]
+              | SentenceTacticGeneral Tactic -- A general constructor for tactics
 
 data Tactic = TacticRewrite (Maybe String) [String] [String] [String]
               | TacticSeq [Tactic]
@@ -83,7 +92,8 @@ data Tactic = TacticRewrite (Maybe String) [String] [String] [String]
               | TacticUnfold [String] (Maybe String)
               | TacticFold [String] (Maybe String)
               | TacticRepeat Tactic
-              | TacticFunction [CBinder] TacticMatch
+              | TacticFunction Identifier [CBinder] TacticMatch 
+              | TacticCall Identifier [TacticTerm] -- Calling tactic functions with arguments
 
 data Sort = Prop
           | Set

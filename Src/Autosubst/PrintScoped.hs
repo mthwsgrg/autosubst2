@@ -120,6 +120,7 @@ instance CoqShow Sentence where
   coqShow (SentenceVariable name xs) = text "Variable" <+> text name <+> text ":" <+> coqShow xs <> text "."
   coqShow (SentenceRequireExport []) = empty
   coqShow (SentenceRequireExport names) = text "Require Export" <+> hsep (map coqShow names) <> text "."
+  coqShow (SentenceTacticGeneral tac) = coqShow tac 
 
 instance CoqShow SubstTy where
   coqShow xs = hsep (map (\x -> case x of
@@ -156,6 +157,37 @@ instance CoqShow Term where
   coqShow (TermVar s) = coqShow s
   coqShow (TermConst c) = coqShow c
 
+
+instance CoqShow TacticTerm where
+  coqShow (JustTerm t) = coqShow t
+  coqShow (InContext t) = text "context[" <+> coqShow t <+> text "]"
+  coqShow (JustString s) = text s
+
+instance CoqShow TacticPattern where
+  coqShow (TacticPattern t) = coqShow t
+
+instance CoqShow TacticMatchHyp where
+  coqShow (HypForm1 t1 t2) = coqShow t1 <+> text ":" <+> coqShow t2
+
+instance CoqShow TacticGoalPattern where
+  coqShow (TacticGoalPattern hyps concl) = text "[" <+> hsep (map coqShow hyps) <+> coqShow concl <+> text "]"
+
+instance CoqShow TacticMatchItem where
+  coqShow (MatchTerm t) = coqShow t
+  coqShow (MatchGoal) = text "goal"
+
+instance CoqShow TacticEquation where
+  coqShow (TacticEquationTerm pt t) = text "| " <+> coqShow pt <+> text " => " <+> coqShow t
+  coqShow (TacticEquationGoal pt t) = text "| " <+> coqShow pt <+> text " => " <+> coqShow t
+
+instance CoqShow TacticMatchKey where
+  coqShow (TacticSimpleMatch) = text "match"
+  coqShow (TacticLazyMatch) = text "lazymatch"
+  coqShow (TacticMultiMatch) = text "multimatch"
+
+instance CoqShow TacticMatch where
+  coqShow (TacticMatch mkey mitem meqs) = coqShow mkey <+> text " " <+> coqShow mitem <+> text " " <$$> vcat (map coqShow meqs) <$$> text "end"
+ 
 -- Printing for automation tactics
 instance CoqShow Tactic where
   coqShow (TacticId t) = text t
@@ -171,3 +203,5 @@ instance CoqShow Tactic where
   coqShow (TacticUnfold xs Nothing) = text "unfold" <+> hsep (punctuate (text ", ") (map coqShow xs))
   coqShow (TacticFold xs (Just s)) = hsep (punctuate (text "; ") (map (\x -> text "try fold" <+> coqShow x <+> text s) xs))
   coqShow (TacticUnfold xs (Just s)) = text "unfold" <+> hsep (punctuate (text ", ") (map (\x -> coqShow x) xs)) <+> text s
+  coqShow (TacticFunction name bs body) = coqShow "Ltac " <+> coqShow name <+> hsep (map coqShow bs) <+> text ":=" <$$> indent 2 (coqShow body)
+  coqShow (TacticCall name args) = text name <+> text " " <+> hsep (map coqShow args)

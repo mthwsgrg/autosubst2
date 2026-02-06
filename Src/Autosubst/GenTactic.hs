@@ -21,6 +21,8 @@ genAsApply :: [TId] -> GenM [Sentence]
 genAsApply xs = return $ [SentenceId "(** as_apply follows **)"]
 
 
+-- I don't print implicit scopes along with the constructors (maybe add it later)
+
 genRedLaws :: [TId] -> GenM [TacticEquation]
 
 genRedLaws varSorts = do
@@ -36,44 +38,46 @@ genRedLawsSort x = do
    
 
 genRedLawsCons :: TId -> Constructor -> GenM TacticEquation
-genRedLawsCons x (Constructor pms name pos) = do
-  subSorts <- substOfSorts x
-  argSorts <- arguments x
-  if checkBinder pos then do_something
+genRedLawsCons x (Constructor pms name pos) =
+  if checkBinder (Constructor pms name pos)
+  then return $ TacticEquationTerm (TacticPattern $ JustTerm $ TermId "later") $ TacticId "later"
+  else do   
+    subSorts <- substOfSorts x
+    argSorts <- arguments x
+    let s = genNames "?s" pos
+    let sigma = genNames "?sigma" subSorts
+    subTerms <- genSubTerms (zip (map TermId s) argSorts) (zip (map TermId sigma) subSorts)    
+    return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name subTerms) $ TacticId "whatever"
+
+  {-
+  if checkBinder (Constructor pms name pos) then
+     return $ TacticEquation (TacticPatternTerm $ JustTerm $ TermId "later") $ TacticId "later"
   else
-    let s = genNames "?s" pos in
-    let sigma = genNames "?sigma" subSorts in
-    subTerms <- genSubTerms (zip s argSorts) (zip sigma subSorts) in    
-    return $ TacticEquation $ (TacticPatternTerm $ JustTerm $ idApp s subTerms) $ TacticId "whatever"
+  -}
 
 
 genSubTerms :: [(Term, TId)] -> [(Term, TId)] -> GenM [Term]
 genSubTerms sTIds sigmaTIds = mapM (\x -> formArgs (fst x) (snd x) sigmaTIds) sTIds 
   
 formArgs :: Term -> TId -> [(Term, TId)] -> GenM Term
-formArgs s x sigmaTIds =
+formArgs s x sigmaTIds = do
   subSorts <- substOfSorts x
-  let subVector = map TermId (fst $ unzip $ concat $ map (\x -> filter (\y -> x = snd y) sigmaTIds) subSorts) in
-  return $ idApp (subst_ x) $ subVector ++ [TermId s] 
+  let subVector = fst $ unzip $ concat $ map (\x -> filter (\y -> x == snd y) sigmaTIds) subSorts
+  return $ idApp (subst_ x) $ subVector ++ [s] 
 
   
-
 genNames :: String -> [a] -> [String]
 genNames s xs = map (\x -> s ++ show x) (L.findIndices (const True) xs)
 
 
-           
-
-     
-
 checkBinder :: Constructor -> Bool
 checkBinder (Constructor _ _ pos) =
   let binderInPosition (Position bs args) = bs in
-  foldl (\p -> or False (binderInPosition p)) pos
+  or $ map (\p -> null $ binderInPosition p) pos
 
 
 substOfSorts :: TId -> GenM [TId]
-substOfSorts = return $ substOf TId
+substOfSorts x = substOf x
 
 
 
@@ -81,7 +85,6 @@ substOfSorts = return $ substOf TId
 
 
 termStr :: Term -> String
-
 termStr (TermId s) = s
 
 {-
