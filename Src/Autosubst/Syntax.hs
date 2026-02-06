@@ -49,6 +49,7 @@ data Pattern = PatternConstructor Term Identifiers | PatternUnderscore
 
 -- MG: Tactic Syntax follows
 
+-- Usage of terms in Ltac are a bit squirmy and this datatype gives flexibility
 data TacticTerm = JustTerm Term -- When I want to use the type Term directly in a tactic
                 | InContext Term -- Would print as Terms inside context[] construct in Ltac
                 | JustString String -- For more flexibility with tactic (useful for underscores, or to refer terms in local context)

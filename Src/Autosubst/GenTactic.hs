@@ -18,11 +18,21 @@ import           Data.List                as L
 
 
 genAsApply :: [TId] -> GenM [Sentence]
-genAsApply xs = return $ [SentenceId "(** as_apply follows **)"]
+genAsApply xs = do
+  heuristics <- genHeuristics xs
+  return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral $ heuristics]
 
 
 -- I don't print implicit scopes along with the constructors (maybe add it later)
 
+
+genHeuristics :: [TId] -> GenM Tactic
+genHeuristics xs = do
+  redLaws <- genRedLaws xs 
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") redLaws
+  return $ TacticFunction "heuristics" [BinderName "gexp"] matchBody
+  
+                                                                    
 genRedLaws :: [TId] -> GenM [TacticEquation]
 
 genRedLaws varSorts = do
@@ -48,12 +58,6 @@ genRedLawsCons x (Constructor pms name pos) =
     let sigma = genNames "?sigma" subSorts
     subTerms <- genSubTerms (zip (map TermId s) argSorts) (zip (map TermId sigma) subSorts)    
     return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name subTerms) $ TacticId "whatever"
-
-  {-
-  if checkBinder (Constructor pms name pos) then
-     return $ TacticEquation (TacticPatternTerm $ JustTerm $ TermId "later") $ TacticId "later"
-  else
-  -}
 
 
 genSubTerms :: [(Term, TId)] -> [(Term, TId)] -> GenM [Term]
