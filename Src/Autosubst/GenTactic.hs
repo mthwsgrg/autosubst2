@@ -77,7 +77,7 @@ genNames s xs = map (\x -> s ++ show x) (L.findIndices (const True) xs)
 checkBinder :: Constructor -> Bool
 checkBinder (Constructor _ _ pos) =
   let binderInPosition (Position bs args) = bs in
-  or $ map (\p -> null $ binderInPosition p) pos
+  or $ map (\p -> not $ null $ binderInPosition p) pos
 
 
 substOfSorts :: TId -> GenM [TId]

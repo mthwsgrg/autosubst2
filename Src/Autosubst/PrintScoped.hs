@@ -186,7 +186,7 @@ instance CoqShow TacticMatchKey where
   coqShow (TacticMultiMatch) = text "multimatch"
 
 instance CoqShow TacticMatch where
-  coqShow (TacticMatch mkey mitem meqs) = coqShow mkey <+> text " " <+> coqShow mitem <+> text " " <$$> vcat (map coqShow meqs) <$$> text "end"
+  coqShow (TacticMatch mkey mitem meqs) = coqShow mkey <+> text " " <+> coqShow mitem <+> text " with" <$$> vcat (map coqShow meqs) <$$> text "end."
  
 -- Printing for automation tactics
 instance CoqShow Tactic where
