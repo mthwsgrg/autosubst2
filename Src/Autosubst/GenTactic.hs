@@ -14,7 +14,8 @@ import           Control.Monad.State.Lazy
 import           Data.List                as L
 
 
--- Generation of as_apply tactic
+  
+-- Generation of as_apply tactic Start
 
 
 genAsApply :: [TId] -> GenM [Sentence]
@@ -52,8 +53,8 @@ genRedLawsCons x (Constructor pms name pos) =
   if checkBinder (Constructor pms name pos)
   then return $ TacticEquationTerm (TacticPattern $ JustTerm $ TermId "later") $ TacticId "later"
   else do   
-    subSorts <- substOfSorts x
-    argSorts <- arguments x
+    subSorts <- substOf x
+    argConst <- arguments x
     let s = genNames "?s" pos
     let sigma = genNames "?sigma" subSorts
     subTerms <- genSubTerms (zip (map TermId s) argSorts) (zip (map TermId sigma) subSorts)    
@@ -74,24 +75,40 @@ genNames :: String -> [a] -> [String]
 genNames s xs = map (\x -> s ++ show x) (L.findIndices (const True) xs)
 
 
+-- Checks if a constructor is a binder
 checkBinder :: Constructor -> Bool
 checkBinder (Constructor _ _ pos) =
   let binderInPosition (Position bs args) = bs in
   or $ map (\p -> not $ null $ binderInPosition p) pos
 
+genSubObjArg :: Position -> [(Term, TId)] -> Term
+genSubObjArg (Position bs arg) = 
 
-substOfSorts :: TId -> GenM [TId]
-substOfSorts x = substOf x
+-- Returns the sorts of the arguments of a constructor
+genArgConst :: Constructor -> GenM [TId]
+genArgConst (Constructor pms name pos) = 
+
+
+
+
+
+-- Generation of as_apply tactic End
 
 
 
 -- Generation of program data to see what's happening
 
+{- This genAsApply is a dummy 
 
+genAsApply :: [TId] -> GenM [Sentence]
+genAsApply xs =  return $ [SentenceId "(** as_apply follows **)"]
+-}
+
+
+{-
 termStr :: Term -> String
 termStr (TermId s) = s
 
-{-
 genCompp :: GenM [Sentence]
 genCompp = do
   toVarT <- toVar "tmx" $ SubstSubst [TermId "sigma1", TermId "sigma2", TermId "sigma3"]
