@@ -25,7 +25,8 @@ genAsApply xs = do
 
 
 -- I don't print implicit scopes along with the constructors (maybe add it later)
-
+-- I don't at the moment use SubstTy objects (maybe add it later for maintaining consistentcy with the other parts)
+-- Currently I use some existing functions to talk with signature, and also I define some myself. Some of the latter maybe redundant but I will remove it later.
 
 genHeuristics :: [TId] -> GenM Tactic
 genHeuristics xs = do
@@ -48,18 +49,91 @@ genRedLawsSort x = do
    return tacEqns
    
 
+-- Don't start parameter name with s* because it's used in constructor arg names. (This issue exist in main code gen as well)
 genRedLawsCons :: TId -> Constructor -> GenM TacticEquation
-genRedLawsCons x (Constructor pms name pos) =
+genRedLawsCons x (Constructor pms name pos) = do
+  subSorts <- substOf x
+  let sigmas = zip $  (map TermId (genNames "?sigma" subSorts)) pos
+  let pts = zip $ (map TermId (genNames "?s" pos)) subSorts
+  tms <- mapM (\pt -> genPosSubTerm pt sigmas) pts
+  let pnames = map (\x -> TermId (qmark_ x)) (fst pms)
+  return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name (pnames++tms)) $ TacticId "whatever"
+  
+   
+
+-- Take a Position, Term and Substitutions and returns the Term with substitution performed
+genPosSubTerm :: (Position, Term) -> [(Term, TId)] -> GenM Term
+genPosSubTerm (Position bs args, tm) subSorts =  
+  
+{-
+
+Unlike generation of instantiation/renaming, we can't generate up_* function for lift because we match asimplified types in heuristics.
+Hence We need to generate the unfolded and asimplified version of liftings.
+
+-}
+
+-- Function for asimplified lift inst and renaming construction. For each position this function is called
+asimpledLiftGenSub :: [Binder] -> (Term, TId) -> GenM Term
+
+
+
+forCompGen :: [Binder] -> (Term, TId) -> GenM [Term]
+forCompGenComponent :: [Binder] -> TId -> GenM Term
+
+
+
+forCompGenComponent bs x = foldl (\y s -> shiftComposer x y s) (TermId (var_ x)) bs  
+
+
+-- forms composition with shift
+shiftComposer :: TId -> Binder -> Term -> GenM Term
+
+-- forms variables to sconsed/sconsped
+varFormer :: [Binder] -> [(Binder, Term)]
+
+
+-- get variadic binder length
+getVBinderLength :: Binder -> String
+
+
+-- get Binder from position
+binderInPos :: Position -> [Binder]
+
+-- prefix a string with question mark
+qmark_ :: String -> String
+
+
+-- generates variables of a sort in 
+asimpledLiftGenRen :: [Binder] -> (Term, TId) -> GenM Term
+
+
+
+{-
+
+
+
+  
   if checkBinder (Constructor pms name pos)
   then return $ TacticEquationTerm (TacticPattern $ JustTerm $ TermId "later") $ TacticId "later"
   else do   
     subSorts <- substOf x
+
+    
     argConst <- arguments x
     let s = genNames "?s" pos
     let sigma = genNames "?sigma" subSorts
     subTerms <- genSubTerms (zip (map TermId s) argSorts) (zip (map TermId sigma) subSorts)    
     return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name subTerms) $ TacticId "whatever"
 
+
+
+-- Returns a substitution vector of appropriate lifting by taking a list of binder, a sort under these binders, a list of substitution vector along with their sorts applicable to the main sort
+genSubVector :: [Binder] -> TId -> [Term, TId] -> Gen [Term]
+genSubVector bs x subs = 
+  
+
+  
+             
 
 genSubTerms :: [(Term, TId)] -> [(Term, TId)] -> GenM [Term]
 genSubTerms sTIds sigmaTIds = mapM (\x -> formArgs (fst x) (snd x) sigmaTIds) sTIds 
@@ -88,7 +162,7 @@ genSubObjArg (Position bs arg) =
 genArgConst :: Constructor -> GenM [TId]
 genArgConst (Constructor pms name pos) = 
 
-
+-}
 
 
 
