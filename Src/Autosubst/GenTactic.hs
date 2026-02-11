@@ -102,6 +102,30 @@ Hence We need to generate the unfolded and asimplified version of liftings.
   
 -- Function for asimplified lift inst and renaming construction. For each position this function is called
 asimpledLiftGenSub :: [Binder] -> (Term, TId) -> GenM Term
+asimpledLiftGenSub bs (sigma, srt) = do
+  compTerms <- compFormer srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
+  consList <- consFormer srt bs
+  let conser (bndr, tm) =
+        case bndr of
+          Single _ -> TermApp cons_ [tm]
+          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm]
+  return $ if null compTerms then sigma else foldl (\bndr tm -> conser (bndr,tm)) (TermApp (TermConst Comp) [sigma]++compTerm ) consList
+
+
+
+-- Perform appropriate shifting in a sort's substitution vector component with respect to a list of binders
+compFormer :: TId -> [Binder] -> GenM [Term]
+compFormer x bs = do
+  subSorts <- substOf x
+  if bs_sublist_of_subSorts then
+    do
+      
+  else
+    return $ []
+
+
+-- Takes a sort and generate variables for sconsing/sconsping if the sort appear in a list of binders
+consFormer :: TId -> [Binder] -> GenM [(Binder, Term)]
 
 
 
@@ -115,7 +139,7 @@ forCompGenComponent bs x = foldl (\y s -> shiftComposer x y s) (TermId (var_ x))
 
 
 -- forms composition with shift
- shiftComposer :: TId -> Binder -> Term -> GenM Term
+shiftComposer :: TId -> Binder -> Term -> GenM Term
 
 -- forms variables to sconsed/sconsped
 varFormer :: [Binder] -> [(Binder, Term)]
