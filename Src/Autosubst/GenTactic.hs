@@ -63,7 +63,33 @@ genRedLawsCons x (Constructor pms name pos) = do
 
 -- Take a Position, Term and Substitutions and returns the Term with substitution performed
 genPosSubTerm :: (Position, Term) -> [(Term, TId)] -> GenM Term
-genPosSubTerm (Position bs args, tm) subSorts =  
+genPosSubTerm (Position bs arg, tm) subSorts = return $ tmAppExt (genSubVecArg arg bs subSorts) tm
+
+-- Extend the application list of a term with one more term
+tmAppExt :: Term -> Term -> Term
+  
+-- Generates substitution term for an argument  
+genSubVecArg :: Argument -> [Binder] -> [(Term, TId)] -> GenM Term
+genSubVecArg (Atom y) bs subSorts = do
+  b <- hasSubst y
+  if b then do  
+    newSubSorts <- remSubSorts y subSorts
+    subVectors <- mapM (\sub -> asimpledLiftGenSub bs sub) newSubSorts
+    return $ idApp (subst_ y) subVectors 
+  else
+    return $ (TermAbs [BinderName "x"] (TermId "x"))
+    
+    
+genSubVecArg (FunApp fname _ args) bs subSorts = do
+  argSubVectors <-  mapM (\arg -> genSubVecArg arg bs subSorts) args
+  return $ idApp fname argSubVectors
+
+-- removes substitution sorts which is not relevant to a sort
+remSubSorts :: TId -> [(Term,TId)] -> GenM [(Term, TId)]
+
+-- Takes a Term and Substitution vector and returns a Term instantiated with the substitution vector  
+tmSubst :: Term -> [Term] -> GenM Term
+
   
 {-
 
@@ -72,12 +98,15 @@ Hence We need to generate the unfolded and asimplified version of liftings.
 
 -}
 
+
+  
 -- Function for asimplified lift inst and renaming construction. For each position this function is called
 asimpledLiftGenSub :: [Binder] -> (Term, TId) -> GenM Term
 
 
 
 forCompGen :: [Binder] -> (Term, TId) -> GenM [Term]
+
 forCompGenComponent :: [Binder] -> TId -> GenM Term
 
 
@@ -86,7 +115,7 @@ forCompGenComponent bs x = foldl (\y s -> shiftComposer x y s) (TermId (var_ x))
 
 
 -- forms composition with shift
-shiftComposer :: TId -> Binder -> Term -> GenM Term
+ shiftComposer :: TId -> Binder -> Term -> GenM Term
 
 -- forms variables to sconsed/sconsped
 varFormer :: [Binder] -> [(Binder, Term)]
