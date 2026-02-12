@@ -6,6 +6,7 @@ prod: Functor
 -- the types
 ty : Type
 tm : Type
+bool: Type
 
 -- the constructors for ty
 arr : ty -> ty -> ty
@@ -23,3 +24,4 @@ con5 : "prod" (tm,tm) -> tm
 lam5 (p: nat) : (tm -> <p,tm>  -> tm) -> tm
 lam6 (p: nat) : (<p,tm> -> tm -> tm) -> tm
 lam7 (p: nat) (q: nat) : (<p,tm> -> <q,tm> -> tm) -> tm
+con6 : bool -> tm -> tm

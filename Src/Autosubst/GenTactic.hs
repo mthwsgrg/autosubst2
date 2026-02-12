@@ -53,27 +53,32 @@ genRedLawsSort x = do
 genRedLawsCons :: TId -> Constructor -> GenM TacticEquation
 genRedLawsCons x (Constructor pms name pos) = do
   subSorts <- substOf x
-  let sigmas = zip $  (map TermId (genNames "?sigma" subSorts)) pos
-  let pts = zip $ (map TermId (genNames "?s" pos)) subSorts
-  tms <- mapM (\pt -> genPosSubTerm pt sigmas) pts
+  let sigmas = zip subSorts (map TermId (genNames "?sigma" subSorts)) 
+  let pts = zip pos (map TermId (genNames "?s" pos))
+  tms <- mapM (\pt -> genPosSubTerm pt sigmas) pts -- tms will hold the instantiated positions in a list
   let pnames = map (\x -> TermId (qmark_ x)) (fst pms)
   return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name (pnames++tms)) $ TacticId "whatever"
   
    
 
 -- Take a Position, Term and Substitutions and returns the Term with substitution performed
-genPosSubTerm :: (Position, Term) -> [(Term, TId)] -> GenM Term
-genPosSubTerm (Position bs arg, tm) subSorts = return $ tmAppExt (genSubVecArg arg bs subSorts) tm
-
--- Extend the application list of a term with one more term
-tmAppExt :: Term -> Term -> Term
+genPosSubTerm :: (Position, Term) -> [(TId, Term)] -> GenM Term
+genPosSubTerm (Position bs arg, tm) subSorts =
+  return $ case (genSubVecArg arg bs subSorts) of
+              TermApp h ts -> (TermApp h $ ts++[tm]) 
+              t -> TermApp t [tm] -- This case is the TermAbs case for external constructors like nat, bool etc which don't have inst/ren operations
   
 -- Generates substitution term for an argument  
-genSubVecArg :: Argument -> [Binder] -> [(Term, TId)] -> GenM Term
+genSubVecArg :: Argument -> [Binder] -> [(TId, Term)] -> GenM Term
+
 genSubVecArg (Atom y) bs subSorts = do
   b <- hasSubst y
-  if b then do  
-    newSubSorts <- remSubSorts y subSorts
+  if b then do
+    ySubSorts <- substOf y
+    newSubSorts <- return $ foldr (\y' ys -> ys ++ (case (lookup y' subSorts) of
+                                             Just t  -> [ (y',t) ]
+                                             Nothing -> []
+                                              ) [] ySubsorts
     subVectors <- mapM (\sub -> asimpledLiftGenSub bs sub) newSubSorts
     return $ idApp (subst_ y) subVectors 
   else
@@ -82,13 +87,7 @@ genSubVecArg (Atom y) bs subSorts = do
     
 genSubVecArg (FunApp fname _ args) bs subSorts = do
   argSubVectors <-  mapM (\arg -> genSubVecArg arg bs subSorts) args
-  return $ idApp fname argSubVectors
-
--- removes substitution sorts which is not relevant to a sort
-remSubSorts :: TId -> [(Term,TId)] -> GenM [(Term, TId)]
-
--- Takes a Term and Substitution vector and returns a Term instantiated with the substitution vector  
-tmSubst :: Term -> [Term] -> GenM Term
+  return $ map_ fname argSubVectors
 
   
 {-
@@ -101,15 +100,15 @@ Hence We need to generate the unfolded and asimplified version of liftings.
 
   
 -- Function for asimplified lift inst and renaming construction. For each position this function is called
-asimpledLiftGenSub :: [Binder] -> (Term, TId) -> GenM Term
-asimpledLiftGenSub bs (sigma, srt) = do
+asimpledLiftGenSub :: [Binder] -> (TId, Term) -> GenM Term
+asimpledLiftGenSub bs (srt, sigma) = do
   compTerms <- compFormer srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
   consList <- consFormer srt bs
-  let conser (bndr, tm) =
+  let conser (bndr, tm) tmDef =
         case bndr of
-          Single _ -> TermApp cons_ [tm]
-          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm]
-  return $ if null compTerms then sigma else foldl (\bndr tm -> conser (bndr,tm)) (TermApp (TermConst Comp) [sigma]++compTerm ) consList
+          Single _ -> TermApp cons_ [tm, tmDef]
+          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
+  return $ if null compTerms then sigma else foldr (\bndrTm tm -> conser bndrTm tm ) (TermApp (TermConst Comp) $ [(TermApp (TermId (ren_ srt)) compTerms), sigma]) consList
 
 
 
@@ -117,40 +116,44 @@ asimpledLiftGenSub bs (sigma, srt) = do
 compFormer :: TId -> [Binder] -> GenM [Term]
 compFormer x bs = do
   subSorts <- substOf x
-  if bs_sublist_of_subSorts then
-    do
-      
+  if not (null (intersect (foldr (\bndr xs -> (binderSorts bndr) ++ xs) [] bs) subSorts))  then
+     let shiftComposer x bndr tm =
+           if x == binderSorts bndr then
+             if tm = TermConst Id then shiftFromBinder bndr
+             else TermApp (TermConst Comp) [tm, shiftFromBinder bndr]
+           else tm in
+       return $ map (\x -> foldr (\bndr tm -> shiftComposer x bndr tm) (TermConst Id) bs ) subSorts            
   else
     return $ []
 
 
+-- Gets the appropriate shifting from a binder
+shiftFromBinder :: Binder -> Term
+
 -- Takes a sort and generate variables for sconsing/sconsping if the sort appear in a list of binders
-consFormer :: TId -> [Binder] -> GenM [(Binder, Term)]
+varsFormer :: TId -> [Binder] -> GenM [(Binder, Term)]
+varsFormer x bs =
+  let varFormer bndr bs =      
+        case bndr of
+          Single x -> foldr (\bndr' tm -> case tm of
+                                             TermApp v ts -> case bndr' of
+                                                              Single _ -> TermApp v [TermApp (TermConst Shift) [ts]]
+                                                              BinderList p _ -> TermApp x [TermApp (TermId "shift_p") [TermId (qmark_ p), ts]]) (idApp (var_ x) TermConst VarZero) bs                 
 
 
-
-forCompGen :: [Binder] -> (Term, TId) -> GenM [Term]
-
-forCompGenComponent :: [Binder] -> TId -> GenM Term
-
-
-
-forCompGenComponent bs x = foldl (\y s -> shiftComposer x y s) (TermId (var_ x)) bs  
-
-
--- forms composition with shift
-shiftComposer :: TId -> Binder -> Term -> GenM Term
-
--- forms variables to sconsed/sconsped
-varFormer :: [Binder] -> [(Binder, Term)]
+          BinderList p x  -> foldr (\bndr' tm -> case tm of
+                                                   TermApp c [h, z] -> case bndr' of
+                                                                         Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
+                                                                         BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z])
+                                                   (TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in
+                  
+  let varsFormer' bs =
+        case bs of
+          [] -> []
+          bndr: rest -> varFormer bndr rest : varsFormer' bs in            
+  return $ varsFormer' $ filter (\bndr -> [x] = binderSorts bndr) bs
 
 
--- get variadic binder length
-getVBinderLength :: Binder -> String
-
-
--- get Binder from position
-binderInPos :: Position -> [Binder]
 
 -- prefix a string with question mark
 qmark_ :: String -> String
@@ -159,63 +162,6 @@ qmark_ :: String -> String
 -- generates variables of a sort in 
 asimpledLiftGenRen :: [Binder] -> (Term, TId) -> GenM Term
 
-
-
-{-
-
-
-
-  
-  if checkBinder (Constructor pms name pos)
-  then return $ TacticEquationTerm (TacticPattern $ JustTerm $ TermId "later") $ TacticId "later"
-  else do   
-    subSorts <- substOf x
-
-    
-    argConst <- arguments x
-    let s = genNames "?s" pos
-    let sigma = genNames "?sigma" subSorts
-    subTerms <- genSubTerms (zip (map TermId s) argSorts) (zip (map TermId sigma) subSorts)    
-    return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name subTerms) $ TacticId "whatever"
-
-
-
--- Returns a substitution vector of appropriate lifting by taking a list of binder, a sort under these binders, a list of substitution vector along with their sorts applicable to the main sort
-genSubVector :: [Binder] -> TId -> [Term, TId] -> Gen [Term]
-genSubVector bs x subs = 
-  
-
-  
-             
-
-genSubTerms :: [(Term, TId)] -> [(Term, TId)] -> GenM [Term]
-genSubTerms sTIds sigmaTIds = mapM (\x -> formArgs (fst x) (snd x) sigmaTIds) sTIds 
-  
-formArgs :: Term -> TId -> [(Term, TId)] -> GenM Term
-formArgs s x sigmaTIds = do
-  subSorts <- substOfSorts x
-  let subVector = fst $ unzip $ concat $ map (\x -> filter (\y -> x == snd y) sigmaTIds) subSorts
-  return $ idApp (subst_ x) $ subVector ++ [s] 
-
-  
-genNames :: String -> [a] -> [String]
-genNames s xs = map (\x -> s ++ show x) (L.findIndices (const True) xs)
-
-
--- Checks if a constructor is a binder
-checkBinder :: Constructor -> Bool
-checkBinder (Constructor _ _ pos) =
-  let binderInPosition (Position bs args) = bs in
-  or $ map (\p -> not $ null $ binderInPosition p) pos
-
-genSubObjArg :: Position -> [(Term, TId)] -> Term
-genSubObjArg (Position bs arg) = 
-
--- Returns the sorts of the arguments of a constructor
-genArgConst :: Constructor -> GenM [TId]
-genArgConst (Constructor pms name pos) = 
-
--}
 
 
 
