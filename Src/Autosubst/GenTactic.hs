@@ -56,15 +56,16 @@ genRedLawsCons x (Constructor pms name pos) = do
   let sigmas = zip subSorts (map TermId (genNames "?sigma" subSorts)) 
   let pts = zip pos (map TermId (genNames "?s" pos))
   tms <- mapM (\pt -> genPosSubTerm pt sigmas) pts -- tms will hold the instantiated positions in a list
-  let pnames = map (\x -> TermId (qmark_ x)) (fst pms)
+  let pnames = map (\x -> TermId (qmark_ x)) (fst (unzip pms))
   return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name (pnames++tms)) $ TacticId "whatever"
   
    
 
 -- Take a Position, Term and Substitutions and returns the Term with substitution performed
 genPosSubTerm :: (Position, Term) -> [(TId, Term)] -> GenM Term
-genPosSubTerm (Position bs arg, tm) subSorts =
-  return $ case (genSubVecArg arg bs subSorts) of
+genPosSubTerm (Position bs arg, tm) subSorts = do
+  tm' <-  genSubVecArg arg bs subSorts
+  return $ case tm' of
               TermApp h ts -> (TermApp h $ ts++[tm]) 
               t -> TermApp t [tm] -- This case is the TermAbs case for external constructors like nat, bool etc which don't have inst/ren operations
   
@@ -78,7 +79,7 @@ genSubVecArg (Atom y) bs subSorts = do
     newSubSorts <- return $ foldr (\y' ys -> ys ++ (case (lookup y' subSorts) of
                                              Just t  -> [ (y',t) ]
                                              Nothing -> []
-                                              ) [] ySubsorts
+                                              )) [] ySubSorts
     subVectors <- mapM (\sub -> asimpledLiftGenSub bs sub) newSubSorts
     return $ idApp (subst_ y) subVectors 
   else
@@ -103,12 +104,12 @@ Hence We need to generate the unfolded and asimplified version of liftings.
 asimpledLiftGenSub :: [Binder] -> (TId, Term) -> GenM Term
 asimpledLiftGenSub bs (srt, sigma) = do
   compTerms <- compFormer srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
-  consList <- consFormer srt bs
+  varsList <- varsFormer srt bs
   let conser (bndr, tm) tmDef =
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
           BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
-  return $ if null compTerms then sigma else foldr (\bndrTm tm -> conser bndrTm tm ) (TermApp (TermConst Comp) $ [(TermApp (TermId (ren_ srt)) compTerms), sigma]) consList
+  return $ if null compTerms then sigma else foldr (\bndrTm tm -> conser bndrTm tm ) (TermApp (TermConst Comp) $ [(TermApp (TermId (ren_ srt)) compTerms), sigma]) varsList
 
 
 
@@ -117,18 +118,20 @@ compFormer :: TId -> [Binder] -> GenM [Term]
 compFormer x bs = do
   subSorts <- substOf x
   if not (null (intersect (foldr (\bndr xs -> (binderSorts bndr) ++ xs) [] bs) subSorts))  then
+     let shiftFromBinder bndr =
+           case bndr of
+             Single _ -> TermConst Shift
+             BinderList p _ -> TermApp (TermId "shift_p") [TermId (qmark_ p)] in
      let shiftComposer x bndr tm =
-           if x == binderSorts bndr then
-             if tm = TermConst Id then shiftFromBinder bndr
-             else TermApp (TermConst Comp) [tm, shiftFromBinder bndr]
+           if [x] == binderSorts bndr then
+             case tm of
+               TermConst Id -> shiftFromBinder bndr
+               _ -> TermApp (TermConst Comp) [tm, shiftFromBinder bndr]
            else tm in
-       return $ map (\x -> foldr (\bndr tm -> shiftComposer x bndr tm) (TermConst Id) bs ) subSorts            
+     return $ map (\x -> foldr (\bndr tm -> shiftComposer x bndr tm) (TermConst Id) bs ) subSorts            
   else
     return $ []
 
-
--- Gets the appropriate shifting from a binder
-shiftFromBinder :: Binder -> Term
 
 -- Takes a sort and generate variables for sconsing/sconsping if the sort appear in a list of binders
 varsFormer :: TId -> [Binder] -> GenM [(Binder, Term)]
@@ -137,31 +140,38 @@ varsFormer x bs =
         case bndr of
           Single x -> foldr (\bndr' tm -> case tm of
                                              TermApp v ts -> case bndr' of
-                                                              Single _ -> TermApp v [TermApp (TermConst Shift) [ts]]
-                                                              BinderList p _ -> TermApp x [TermApp (TermId "shift_p") [TermId (qmark_ p), ts]]) (idApp (var_ x) TermConst VarZero) bs                 
+                                                              Single _ -> TermApp v [TermApp (TermConst Shift) ts]
+                                                              BinderList p _ -> TermApp v [TermApp (TermId "shift_p") $ [TermId (qmark_ p)] ++ ts])
+                      (idApp (var_ x) $ [TermConst VarZero]) bs                 
 
 
           BinderList p x  -> foldr (\bndr' tm -> case tm of
                                                    TermApp c [h, z] -> case bndr' of
                                                                          Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
                                                                          BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z])
-                                                   (TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in
+                            (TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in
                   
   let varsFormer' bs =
         case bs of
           [] -> []
-          bndr: rest -> varFormer bndr rest : varsFormer' bs in            
-  return $ varsFormer' $ filter (\bndr -> [x] = binderSorts bndr) bs
+          bndr: rest -> (bndr, varFormer bndr rest) : varsFormer' bs in            
+  return $ varsFormer' $ filter (\bndr -> [x] == binderSorts bndr) bs
 
 
 
 -- prefix a string with question mark
 qmark_ :: String -> String
+qmark_ s = ['?'] ++ s
+
+genNames :: String -> [a] -> [String]
+genNames s xs = map (\x -> s ++ show x) (L.findIndices (const True) xs)
 
 
+
+{-
 -- generates variables of a sort in 
 asimpledLiftGenRen :: [Binder] -> (Term, TId) -> GenM Term
-
+-}
 
 
 
@@ -175,8 +185,8 @@ asimpledLiftGenRen :: [Binder] -> (Term, TId) -> GenM Term
 
 genAsApply :: [TId] -> GenM [Sentence]
 genAsApply xs =  return $ [SentenceId "(** as_apply follows **)"]
--}
 
+-}
 
 {-
 termStr :: Term -> String
