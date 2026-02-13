@@ -61,6 +61,8 @@ genRedLawsCons x (Constructor pms name pos) = do
   
    
 
+
+
 -- Take a Position, Term and Substitutions and returns the Term with substitution performed
 genPosSubTerm :: (Position, Term) -> [(TId, Term)] -> GenM Term
 genPosSubTerm (Position bs arg, tm) subSorts = do
@@ -68,7 +70,8 @@ genPosSubTerm (Position bs arg, tm) subSorts = do
   return $ case tm' of
               TermApp h ts -> (TermApp h $ ts++[tm]) 
               t -> TermApp t [tm] -- This case is the TermAbs case for external constructors like nat, bool etc which don't have inst/ren operations
-  
+
+
 -- Generates substitution term for an argument  
 genSubVecArg :: Argument -> [Binder] -> [(TId, Term)] -> GenM Term
 
@@ -122,13 +125,13 @@ compFormer x bs = do
            case bndr of
              Single _ -> TermConst Shift
              BinderList p _ -> TermApp (TermId "shift_p") [TermId (qmark_ p)] in
-     let shiftComposer x bndr tm =
-           if [x] == binderSorts bndr then
+     let shiftComposer x' bndr tm =
+           if [x'] == binderSorts bndr then
              case tm of
                TermConst Id -> shiftFromBinder bndr
                _ -> TermApp (TermConst Comp) [tm, shiftFromBinder bndr]
            else tm in
-     return $ map (\x -> foldr (\bndr tm -> shiftComposer x bndr tm) (TermConst Id) bs ) subSorts            
+     return $ map (\x'' -> foldr (\bndr tm -> shiftComposer x'' bndr tm) (TermConst Id) bs ) subSorts            
   else
     return $ []
 
@@ -154,9 +157,8 @@ varsFormer x bs =
   let varsFormer' bs =
         case bs of
           [] -> []
-          bndr: rest -> (bndr, varFormer bndr rest) : varsFormer' bs in            
+          bndr: rest -> (bndr, varFormer bndr rest) : varsFormer' rest in            
   return $ varsFormer' $ filter (\bndr -> [x] == binderSorts bndr) bs
-
 
 
 -- prefix a string with question mark
@@ -165,6 +167,7 @@ qmark_ s = ['?'] ++ s
 
 genNames :: String -> [a] -> [String]
 genNames s xs = map (\x -> s ++ show x) (L.findIndices (const True) xs)
+
 
 
 
