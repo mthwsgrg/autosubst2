@@ -94,13 +94,12 @@ Hence We need to generate the unfolded and asimplified version of liftings.
 
 -}
 
-
   
 -- Function for asimplified lift for subsitutions.
 asimpledLiftGenSub :: [Binder] -> (TId, Term) -> GenM Term
 asimpledLiftGenSub bs (srt, sigma) = do
-  compTerms <- compFormerSub srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
-  varsList <- varsFormerSub srt bs
+  compTerms <- compFormer srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
+  varsList <- varsFormer srt bs False
   let conser (bndr, tm) tmDef =
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
@@ -110,8 +109,8 @@ asimpledLiftGenSub bs (srt, sigma) = do
 
 
 -- Perform appropriate shifting in a sort's substitution vector component with respect to a list of binders
-compFormerSub :: TId -> [Binder] -> GenM [Term]
-compFormerSub x bs = do
+compFormer :: TId -> [Binder] -> GenM [Term]
+compFormer x bs = do
   subSorts <- substOf x
   if not (null (intersect (foldr (\bndr xs -> (binderSorts bndr) ++ xs) [] bs) subSorts))  then
      let shiftFromBinder bndr =
@@ -129,29 +128,32 @@ compFormerSub x bs = do
     return $ []
 
 
--- Takes a sort and generate variables for sconsing/sconsping if the sort appear in a list of binders
-varsFormerSub :: TId -> [Binder] -> GenM [(Binder, Term)]
-varsFormerSub x bs =
-  let varFormer bndr bs =      
+-- Generates 0,1,p or (var 0),(var 1), (var p) with respect a list of binder for sconsing/sconsping. noVar is a bool if set won't generate var constructor
+varsFormer :: TId -> [Binder] -> Bool -> GenM [(Binder, Term)]
+varsFormer x bs noVar =
+  let varFormer bndr bs noVar =      
         case bndr of
           Single x -> foldr (\bndr' tm -> case tm of
                                              TermApp v ts -> case bndr' of
                                                               Single _ -> TermApp v [TermApp (TermConst Shift) ts]
                                                               BinderList p _ -> TermApp v [TermApp (TermId "shift_p") $ [TermId (qmark_ p)] ++ ts])
-                      (idApp (var_ x) $ [TermConst VarZero]) bs                 
+                      (case noVar of
+                         True -> TermConst VarZero
+                         False -> idApp (var_ x) $ [TermConst VarZero]) bs                 
 
 
           BinderList p x  -> foldr (\bndr' tm -> case tm of
                                                    TermApp c [h, z] -> case bndr' of
                                                                          Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
                                                                          BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z])
-                            (TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in
-                  
-  let varsFormer' bs =
+                            (case noVar of
+                               True -> TermApp (TermConst Comp) [TermApp (TermId "zero_p") [TermId (qmark_ p)]]
+                               False -> TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in                  
+  let varsFormer' bs noVar =
         case bs of
           [] -> []
-          bndr: rest -> (bndr, varFormer bndr rest) : varsFormer' rest in            
-  return $ varsFormer' $ filter (\bndr -> [x] == binderSorts bndr) bs
+          bndr: rest -> (bndr, varFormer bndr rest noVar) : varsFormer' rest noVar in            
+  return $ varsFormer' (filter (\bndr -> [x] == binderSorts bndr) bs)  noVar
 
 
 
