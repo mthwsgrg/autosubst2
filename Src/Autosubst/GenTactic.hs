@@ -33,7 +33,7 @@ genHeuristics :: [TId] -> GenM Tactic
 genHeuristics xs = do
   redLaws <- genRedLaws xs 
   let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") redLaws
-  return $ TacticFunction "heuristics" [BinderName "gexp"] matchBody
+  return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
   
 
     
@@ -53,16 +53,22 @@ genRedLawsSort x = do
                     t -> TermApp t [tm] -- This case is the TermAbs case for external constructors like nat, bool etc which don't have inst/ren operations
    let genRedLawsCons x (Constructor pms name pos) renOrSubLift renOrSub = do         
          subSorts <- substOf x
-         let sigmas = zip subSorts (map TermId (genNames "?sigma" subSorts)) 
-         let pts = zip pos (map TermId (genNames "?s" pos))
+         let subNames = genNames "sigma" subSorts
+         let posNames = genNames "s" pos
+         let pnames = fst (unzip pms)
+         let sigmas = zip subSorts (map TermId (map qmark_ subNames)) 
+         let pts = zip pos (map TermId (map qmark_ posNames))
          tms <- mapM (\pt -> genPosTerm pt sigmas renOrSubLift renOrSub) pts -- tms will hold the instantiated positions in a list
-         let pnames = map (\x -> TermId (qmark_ x)) (fst (unzip pms))
-         return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name (pnames++tms)) $ TacticId "whatever"
+         let qpnames = map (\x -> TermId (qmark_ x)) pnames
+         return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name (qpnames++tms)) $
+                  let paramTerms = map TermId pnames in
+                  let posTerms = map TermId posNames in
+                  TacticCall "unify" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] 
    tacEqnsSub <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenSub subst_) csList
    return tacEqnsSub
    
 
--- Generates substitution/renaming term for an Argument bound under a list of Binder. 
+-- Generates (lifted) substitution/renaming term for an Argument bound under a list of Binder. 
 genVecArg ::  Argument -> [Binder] -> [(TId, Term)] -> ([Binder] -> (TId, Term) -> GenM Term) -> (TId -> String) -> GenM Term
 genVecArg (Atom y) bs subSorts renOrSubLift renOrSub = do
   b <- hasSubst y
@@ -155,7 +161,6 @@ qmark_ s = ['?'] ++ s
 
 genNames :: String -> [a] -> [String]
 genNames s xs = map (\x -> s ++ show x) (L.findIndices (const True) xs)
-
 
 
 

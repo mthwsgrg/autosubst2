@@ -203,5 +203,6 @@ instance CoqShow Tactic where
   coqShow (TacticUnfold xs Nothing) = text "unfold" <+> hsep (punctuate (text ", ") (map coqShow xs))
   coqShow (TacticFold xs (Just s)) = hsep (punctuate (text "; ") (map (\x -> text "try fold" <+> coqShow x <+> text s) xs))
   coqShow (TacticUnfold xs (Just s)) = text "unfold" <+> hsep (punctuate (text ", ") (map (\x -> coqShow x) xs)) <+> text s
+  coqShow (TacticMatchExp mexp) = coqShow mexp
   coqShow (TacticFunction name bs body) = coqShow "Ltac " <+> coqShow name <+> hsep (map coqShow bs) <+> text ":=" <$$> indent 2 (coqShow body)
-  coqShow (TacticCall name args) = text name <+> text " " <+> hsep (map coqShow args)
+  coqShow (TacticCall name args) = text name <+> text " " <+> hsep (map (parens . coqShow) args)
