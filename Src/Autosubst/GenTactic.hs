@@ -100,12 +100,12 @@ Hence We need to generate the unfolded and asimplified version of liftings.
 asimpledLiftGenSub :: [Binder] -> (TId, Term) -> GenM Term
 asimpledLiftGenSub bs (srt, sigma) = do
   compTerms <- compFormer srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
-  varsList <- varsFormer srt bs False
+  varsList <- varsFormer srt (filter (\bndr -> [srt] == binderSorts bndr) bs) False
   let conser (bndr, tm) tmDef =
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
           BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
-  return $ if null compTerms then sigma else foldr (\bndrTm tm -> conser bndrTm tm ) (TermApp (TermConst Comp) $ [(TermApp (TermId (ren_ srt)) compTerms), sigma]) (reverse varsList) -- ther reversing because scoping is in the reverse order of polyadic binders in the HOAS spec
+  return $ if null compTerms then sigma else foldl' (\tm bndrTm -> conser bndrTm tm ) (TermApp (TermConst Comp) $ [(TermApp (TermId (ren_ srt)) compTerms), sigma]) varsList -- ther reversing because scoping is in the reverse order of polyadic binders in the HOAS spec
 
 
 asimpledLiftGenRen :: [Binder] -> (TId, Term) -> GenM Term
@@ -119,7 +119,7 @@ asimpledLiftGenRen bs (srt, sigma) = do
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
           BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
-  return $ foldr (\bndrTm tm -> conser bndrTm tm ) compTerm varsList
+  return $ foldr (\bndrTm tm -> conser bndrTm tm ) compTerm (reverse varsList)
       
     
   
@@ -146,10 +146,10 @@ compFormer x bs = do
 
 -- Generates 0,1,p or (var 0),(var 1), (var p) with respect a list of binder for sconsing/sconsping. noVar is a bool if set won't generate var constructor
 varsFormer :: TId -> [Binder] -> Bool -> GenM [(Binder, Term)]
-varsFormer x bs noVar =
+varsFormer mx bs noVar =
   let varFormer bndr bs noVar =      
         case bndr of
-          Single x -> foldr (\bndr' tm -> case tm of
+          Single x -> foldl' (\tm bndr' -> case tm of
                                              TermApp v ts -> case bndr' of
                                                               Single _ -> TermApp v [TermApp (TermConst Shift) ts]
                                                               BinderList p _ -> TermApp v [TermApp (TermId "shift_p") $ [TermId (qmark_ p)] ++ ts])
@@ -158,7 +158,7 @@ varsFormer x bs noVar =
                          False -> idApp (var_ x) $ [TermConst VarZero]) bs                 
 
 
-          BinderList p x  -> foldr (\bndr' tm -> case tm of
+          BinderList p x  -> foldl' (\tm bndr' -> case tm of
                                                    TermApp c [h, z] -> case bndr' of
                                                                          Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
                                                                          BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z])
@@ -169,9 +169,13 @@ varsFormer x bs noVar =
         case bs of
           [] -> []
           bndr: rest -> (bndr, varFormer bndr rest noVar) : varsFormer' rest noVar in            
-  return $ varsFormer' (filter (\bndr -> [x] == binderSorts bndr) bs)  noVar -- Note that polyadic binders appear in the same order as HOAS spec
+  return $  varsFormer' bs noVar -- Note that polyadic binders appear in the same order as HOAS spec
 
 
+{-
+varsFormerRen :: [Binder] -> GenM[(Binder, Term)]
+varsFormerRen bs 
+-}
 
 -- prefix a string with question mark
 qmark_ :: String -> String
