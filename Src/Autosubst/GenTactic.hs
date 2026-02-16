@@ -65,8 +65,8 @@ genRedLawsSort x = do
                   let posTerms = map TermId posNames in
                   TacticCall "unify" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] 
    tacEqnsSub <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenSub subst_) csList
-   --tacEqnsRen <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenRen ren_) csList
-   return $ tacEqnsSub -- ++ tacEqnsRen
+   tacEqnsRen <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenRen ren_) csList
+   return $ tacEqnsSub ++ tacEqnsRen
    
 
 -- Generates (lifted) substitution/renaming term for an Argument bound under a list of Binder. 
@@ -100,7 +100,7 @@ Hence We need to generate the unfolded and asimplified version of liftings.
 asimpledLiftGenSub :: [Binder] -> (TId, Term) -> GenM Term
 asimpledLiftGenSub bs (srt, sigma) = do
   compTerms <- compFormer srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
-  varsList <- varsFormer srt (filter (\bndr -> [srt] == binderSorts bndr) bs) False
+  varsList <- varsFormer (filter (\bndr -> [srt] == binderSorts bndr) bs) False
   let conser (bndr, tm) tmDef =
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
@@ -110,16 +110,16 @@ asimpledLiftGenSub bs (srt, sigma) = do
 
 asimpledLiftGenRen :: [Binder] -> (TId, Term) -> GenM Term
 asimpledLiftGenRen bs (srt, sigma) = do
-  varsList <- varsFormer srt bs True
-  let bindersOfSrt = foldr (\bndr xs -> (if [srt] == binderSorts bndr then [bndr] else []) ++ xs) [] bs
+  let bindersOfSrt = filter (\bndr -> [srt] == binderSorts bndr) bs
+  varsList <- varsFormer bindersOfSrt True
   let compTerm = foldr (\bndr tm -> case bndr of
-                                      Single _ -> TermApp (TermConst Comp) [TermConst Shift, tm]
-                                      BinderList p _ -> TermApp (TermConst Comp) [TermApp (TermId "shift_p") [TermId $ qmark_ p], tm]) sigma bindersOfSrt
+                                      Single _ -> TermApp (TermConst Comp) [tm, TermConst Shift]
+                                      BinderList p _ -> TermApp (TermConst Comp) [tm, TermApp (TermId "shift_p") [TermId $ qmark_ p]]) sigma bindersOfSrt
   let conser (bndr, tm) tmDef =
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
           BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
-  return $ foldr (\bndrTm tm -> conser bndrTm tm ) compTerm (reverse varsList)
+  return $ foldl' (\tm bndrTm -> conser bndrTm tm ) compTerm varsList
       
     
   
@@ -139,43 +139,51 @@ compFormer x bs = do
                TermConst Id -> shiftFromBinder bndr
                _ -> TermApp (TermConst Comp) [tm, shiftFromBinder bndr]
            else tm in
-     return $ map (\x'' -> foldr (\bndr tm -> shiftComposer x'' bndr tm) (TermConst Id) bs ) subSorts            
+     return $ map (\x'' -> foldr (\bndr tm -> shiftComposer x'' bndr tm) (TermConst Id) bs) subSorts            
   else
     return $ []
 
 
 -- Generates 0,1,p or (var 0),(var 1), (var p) with respect a list of binder for sconsing/sconsping. noVar is a bool if set won't generate var constructor
-varsFormer :: TId -> [Binder] -> Bool -> GenM [(Binder, Term)]
-varsFormer mx bs noVar =
-  let varFormer bndr bs noVar =      
+varsFormer :: [Binder] -> Bool -> GenM [(Binder, Term)]
+varsFormer bs noVar =
+  let finFormer bndr bs =
+        case bndr of
+          Single _ -> foldl' (\tm bndr' -> case bndr' of
+                                             Single _ -> TermApp (TermConst Shift) [tm]
+                                             BinderList p _ -> TermApp (TermId "shift_p") [TermId (qmark_ p), tm])
+                      (TermConst VarZero) bs
+          BinderList p _ -> let zerop = (TermApp (TermId "zero_p") [TermId (qmark_ p)]) in
+                            foldr (\bndr' tm -> case tm of
+                                                  TermApp c [h, z] -> case bndr' of
+                                                                        Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
+                                                                        BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z]
+                                                  _ -> case bndr' of
+                                                            Single _ -> TermApp (TermConst Comp) [TermConst Shift, zerop]
+                                                            BinderList p _ -> TermApp (TermConst Comp) [TermApp (TermId "shift_p") [TermId (qmark_ p)], zerop])                                                 
+                            zerop bs in
+            
+  let varFormer bndr bs =      
         case bndr of
           Single x -> foldl' (\tm bndr' -> case tm of
                                              TermApp v ts -> case bndr' of
                                                               Single _ -> TermApp v [TermApp (TermConst Shift) ts]
                                                               BinderList p _ -> TermApp v [TermApp (TermId "shift_p") $ [TermId (qmark_ p)] ++ ts])
-                      (case noVar of
-                         True -> TermConst VarZero
-                         False -> idApp (var_ x) $ [TermConst VarZero]) bs                 
-
-
-          BinderList p x  -> foldl' (\tm bndr' -> case tm of
+                      (idApp (var_ x) $ [TermConst VarZero]) bs                 
+          BinderList p x  -> foldr (\bndr' tm -> case tm of
                                                    TermApp c [h, z] -> case bndr' of
                                                                          Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
                                                                          BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z])
-                            (case noVar of
-                               True -> TermApp (TermId "zero_p") [TermId (qmark_ p)]
-                               False -> TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in                  
-  let varsFormer' bs noVar =
+                             (TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in                  
+  let varsFormer' bs varOrFinFormer =
         case bs of
           [] -> []
-          bndr: rest -> (bndr, varFormer bndr rest noVar) : varsFormer' rest noVar in            
-  return $  varsFormer' bs noVar -- Note that polyadic binders appear in the same order as HOAS spec
+          bndr: rest -> (bndr, varOrFinFormer bndr rest) : varsFormer' rest varOrFinFormer  in            
+  return $ case noVar of
+             True -> varsFormer' bs finFormer
+             False -> varsFormer' bs varFormer -- Note that polyadic binders appear in the same order as HOAS spec
 
 
-{-
-varsFormerRen :: [Binder] -> GenM[(Binder, Term)]
-varsFormerRen bs 
--}
 
 -- prefix a string with question mark
 qmark_ :: String -> String
