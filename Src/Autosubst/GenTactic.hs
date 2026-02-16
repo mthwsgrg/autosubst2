@@ -65,7 +65,8 @@ genRedLawsSort x = do
                   let posTerms = map TermId posNames in
                   TacticCall "unify" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] 
    tacEqnsSub <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenSub subst_) csList
-   return tacEqnsSub
+   --tacEqnsRen <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenRen ren_) csList
+   return $ tacEqnsSub -- ++ tacEqnsRen
    
 
 -- Generates (lifted) substitution/renaming term for an Argument bound under a list of Binder. 
@@ -104,9 +105,24 @@ asimpledLiftGenSub bs (srt, sigma) = do
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
           BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
-  return $ if null compTerms then sigma else foldr (\bndrTm tm -> conser bndrTm tm ) (TermApp (TermConst Comp) $ [(TermApp (TermId (ren_ srt)) compTerms), sigma]) varsList
+  return $ if null compTerms then sigma else foldr (\bndrTm tm -> conser bndrTm tm ) (TermApp (TermConst Comp) $ [(TermApp (TermId (ren_ srt)) compTerms), sigma]) (reverse varsList) -- ther reversing because scoping is in the reverse order of polyadic binders in the HOAS spec
 
 
+asimpledLiftGenRen :: [Binder] -> (TId, Term) -> GenM Term
+asimpledLiftGenRen bs (srt, sigma) = do
+  varsList <- varsFormer srt bs True
+  let bindersOfSrt = foldr (\bndr xs -> (if [srt] == binderSorts bndr then [bndr] else []) ++ xs) [] bs
+  let compTerm = foldr (\bndr tm -> case bndr of
+                                      Single _ -> TermApp (TermConst Comp) [TermConst Shift, tm]
+                                      BinderList p _ -> TermApp (TermConst Comp) [TermApp (TermId "shift_p") [TermId $ qmark_ p], tm]) sigma bindersOfSrt
+  let conser (bndr, tm) tmDef =
+        case bndr of
+          Single _ -> TermApp cons_ [tm, tmDef]
+          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
+  return $ foldr (\bndrTm tm -> conser bndrTm tm ) compTerm varsList
+      
+    
+  
 
 -- Perform appropriate shifting in a sort's substitution vector component with respect to a list of binders
 compFormer :: TId -> [Binder] -> GenM [Term]
@@ -147,13 +163,13 @@ varsFormer x bs noVar =
                                                                          Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
                                                                          BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z])
                             (case noVar of
-                               True -> TermApp (TermConst Comp) [TermApp (TermId "zero_p") [TermId (qmark_ p)]]
+                               True -> TermApp (TermId "zero_p") [TermId (qmark_ p)]
                                False -> TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in                  
   let varsFormer' bs noVar =
         case bs of
           [] -> []
           bndr: rest -> (bndr, varFormer bndr rest noVar) : varsFormer' rest noVar in            
-  return $ varsFormer' (filter (\bndr -> [x] == binderSorts bndr) bs)  noVar
+  return $ varsFormer' (filter (\bndr -> [x] == binderSorts bndr) bs)  noVar -- Note that polyadic binders appear in the same order as HOAS spec
 
 
 
