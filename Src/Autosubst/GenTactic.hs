@@ -31,16 +31,52 @@ genAsApply xs = do
 
 genHeuristics :: [TId] -> GenM Tactic
 genHeuristics xs = do
-  redLaws <- genRedLaws xs 
+  redLaws <- genForEachSort xs genRedLawsSort 
   let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") redLaws
   return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
   
-
     
-genRedLaws :: [TId] -> GenM [TacticEquation]
-genRedLaws varSorts = do
-  redLawsList <- mapM (\x -> genRedLawsSort x) varSorts
-  return $ concat redLawsList
+-- Takes a list of sorts and applies tactic equation generation function on each sort
+
+genForEachSort :: [TId] -> (TId -> GenM [TacticEquation]) -> GenM [TacticEquation]
+genForeachSort xs tacEqnGenerator = do
+  tacEqns <- mapM (\x -> tacEqnGenerator x) xs
+  return $ concat tacEqns
+
+
+
+genBindElimEqnsSort :: TId -> GenM [TacticEquation]
+genBindElimEqnsSort x = do
+  csList <- constructors x
+  let binderPositions = concat $ map (\c -> case c of
+                                              Constructor pms n pos -> filter (\p -> and [isPosArgAtom p, isPosBinder p]) pos) csList -- TODO: maybe a clean up function to remove repeated positions
+  eqns <- mapM (\p -> genBindElimEqns p) binderPositions
+  return eqns
+  
+genBindElimEqns :: Position -> GenM TacticEquation
+genBindElimEqns (Position bs (Atom x)) = do
+  srts <- substOf x
+  let threeTerms srt = do
+        let ss = genNames $ s++srt $ filter (\bndr -> [srt] == binderSorts bndr) bs
+        consedSub <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermId $ "?sigma"++srt)
+        liftedSub <- upSubstS srt bs [TermId $ "sigma"++srt]
+        consedId <- conserWrtBinders bs (map (\s -> TermId s) ss) (var_ srt)
+        return $ [consedSub, (hd liftedSub), consedId]
+  
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 -- Don't start parameter name with s* because it's used in constructor arg names. (This issue exist in main code gen as well)
 genRedLawsSort :: TId -> GenM [TacticEquation]
@@ -187,12 +223,18 @@ varsFormer bs noVar =
 
 -- prefix a string with question mark
 qmark_ :: String -> String
-qmark_ s = ['?'] ++ s
+qmark_ s = "?" ++ s
 
 genNames :: String -> [a] -> [String]
 genNames s xs = map (\x -> s ++ show x) (L.findIndices (const True) xs)
 
+isPosBinder :: Position -> Bool
+isPosBinder (Position bs arg) = if bs == [] then False else True
 
+isPosArgAtom :: Position -> Bool
+isPosArgAtom (Position bs arg) = case arg of
+                                Atom _ -> True
+                                _ -> False
 
 {-
 -- generates variables of a sort in 
