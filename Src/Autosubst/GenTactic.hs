@@ -56,24 +56,23 @@ genBindElimEqnsSort x = do
 genBindElimEqns :: Position -> GenM TacticEquation
 genBindElimEqns (Position bs (Atom x)) = do
   srts <- substOf x
-  let threeTerms srt = do
-        let ss = genNames $ s++srt $ filter (\bndr -> [srt] == binderSorts bndr) bs
+  let threeTermsFormer srt = do
+        let ss = genNames $ "s"++srt $ filter (\bndr -> [srt] == binderSorts bndr) bs
         consedSub <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermId $ "?sigma"++srt)
         liftedSub <- upSubstS srt bs [TermId $ "sigma"++srt]
         consedId <- conserWrtBinders bs (map (\s -> TermId s) ss) (var_ srt)
-        return $ [consedSub, (hd liftedSub), consedId]
-  
-    
-
-
-
-
-
-
-
-
-
-
+        return $ (consedSub, (hd liftedSub), consedId)
+  threeTerms <- mapM (\srt -> threeTermsFormer srt) srts
+  hexprSubs <- let ss = genNames $ "t"++srt $ filter (\bndr -> [srt] == binderSorts bnds) bs in
+               return $ conserWrtBinders bs (map (\s -> TermId s) ss) (var_ srt)
+  let unzippedThree = unzip3 threeTerms 
+  let gexprSubs = case unzippedThree of (a,b,c) -> a 
+  let liftedSubs = case unzippedThree of (a,b,c) -> b
+  let consedIds  = case unzippedThree of (a,b,c) -> c
+  let gexpr = TermApp (subst_ x) $ gexprSubs ++ [TermId $ "?s"++srt]
+  let hexpr = TermApp (subst_ x) ? hexprSubs ++ [TermId $ "?t"++srt]
+  let gexprToUnify = TermApp (TermApp (subst_ x) liftedSubs) consedIds 
+  tacEqn <- unifyTacEqnFormer gexpr hexpr gexprToUnify       
 
 
 
