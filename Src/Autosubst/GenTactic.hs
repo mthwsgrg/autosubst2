@@ -33,6 +33,7 @@ genHeuristics :: [TId] -> GenM Tactic
 genHeuristics xs = do
   redLaws <- genForEachSort xs genRedLawsSort
   bindElimEqns <- genForEachSort xs genBindElimEqnsSort
+  compLaws <- genForEachSort xs genCompLawsSort
   let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (redLaws ++ bindElimEqns)
   return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
   
@@ -44,6 +45,26 @@ genForEachSort xs tacEqnGenerator = do
   tacEqns <- mapM (\x -> tacEqnGenerator x) xs
   return $ concat tacEqns
 
+
+
+genCompLawsSort :: TId -> GenM [TacticEquation]
+genCompLawsSort x = do
+  compCompTacEqns <- genCompCompTacEqns x
+  return compCompTacEqns
+
+
+genCompCompTacEqns :: TId -> GenM [TacticEquation]
+genCompCompTacEqns x = do
+   srts <- substOf x
+   let leftSubs =  map (\sigma -> TermId sigma) (genNames "sigma" srts)
+   let rightSubs =  map (\tau -> TermId tau) (genNames "tau" srts)
+   let leftSubsQ = qmarkify leftSubs
+   let rightSubsQ = qmarkify rightSubs
+   let compForSort (y,sigma) srtsNames = do
+         srtsy <- substOf y
+         return $  TermApp (TermId subst_ y) $ snd (unzip (filter (\srtName -> elem (fst srtName) srtsy) srtsNames))
+   
+   
 
 
 genBindElimEqnsSort :: TId -> GenM [TacticEquation]
@@ -270,8 +291,8 @@ isPosBinder (Position bs arg) = if bs == [] then False else True
 
 isPosArgAtom :: Position -> Bool
 isPosArgAtom (Position bs arg) = case arg of
-                                Atom _ -> True
-                                _ -> False
+                                   Atom _ -> True
+                                   _ -> False
 
 -- note this uses foldl'
 conserWrtBinders :: [Binder] -> Terms -> Term -> (String -> String) -> GenM Term
