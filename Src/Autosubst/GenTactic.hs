@@ -31,8 +31,9 @@ genAsApply xs = do
 
 genHeuristics :: [TId] -> GenM Tactic
 genHeuristics xs = do
-  redLaws <- genForEachSort xs genRedLawsSort 
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") redLaws
+  redLaws <- genForEachSort xs genRedLawsSort
+  bindElimEqns <- genForEachSort xs genBindElimEqnsSort
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (redLaws ++ bindElimEqns)
   return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
   
     
@@ -60,10 +61,10 @@ genBindElimEqns (Position bs (Atom x)) = do
         let filteredBs = filter (\bndr -> [srt] == binderSorts bndr) bs
         let ss = genNames ("s"++srt) $ filteredBs
         let ts = genNames ("t"++srt) $ filteredBs
-        gexprSub  <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermId $ "?sigma"++srt)
+        gexprSub  <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermId $ "?sigma"++srt) qmark_
         liftedSub <- upSubstS srt bs [TermId $ "sigma"++srt]
-        consedId  <- conserWrtBinders bs (map (\s -> TermId s) ss) (TermId $ var_ srt)
-        hexprSub  <- conserWrtBinders bs (map (\t -> TermId t) ts) (TermId $ var_ srt)
+        consedId  <- conserWrtBinders bs (map (\s -> TermId s) ss) (TermId $ var_ srt) id
+        hexprSub  <- conserWrtBinders bs (map (\t -> TermId (qmark_ t)) ts) (TermId $ var_ srt) (\s -> (qmark_ s) ++ "_")
         return $ (gexprSub, (head liftedSub), consedId, hexprSub)
   fourSubs <- mapM (\srt -> fourSubsFormer srt) srts
   let unzippedFour = unzip4 fourSubs 
@@ -241,12 +242,12 @@ isPosArgAtom (Position bs arg) = case arg of
                                 _ -> False
 
 -- note this uses foldl'
-conserWrtBinders :: [Binder] -> Terms -> Term -> GenM Term
-conserWrtBinders bs tms defSub =
+conserWrtBinders :: [Binder] -> Terms -> Term -> (String -> String) -> GenM Term
+conserWrtBinders bs tms defSub pModifier =
   let conser (bndr, tm) def =
         case bndr of
           Single _ -> TermApp cons_ [tm, def]
-          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, def] in
+          BinderList p _ -> TermApp (TermId "scons_p") [TermId (pModifier p), tm, def] in
   return $ foldl' (\tm bndrTm -> conser bndrTm tm ) defSub (zip bs tms)
 
 
