@@ -186,7 +186,7 @@ instance CoqShow TacticMatchKey where
   coqShow (TacticMultiMatch) = text "multimatch"
 
 instance CoqShow TacticMatch where
-  coqShow (TacticMatch mkey mitem meqs) = coqShow mkey <+> text " " <+> coqShow mitem <+> text " with" <$$> vcat (map coqShow meqs) <$$> text "end."
+  coqShow (TacticMatch mkey mitem meqs) = coqShow mkey <+> text " " <+> coqShow mitem <+> text " with" <$$> vcat (map coqShow meqs) <$$> text "end"
  
 -- Printing for automation tactics
 instance CoqShow Tactic where
@@ -204,5 +204,5 @@ instance CoqShow Tactic where
   coqShow (TacticFold xs (Just s)) = hsep (punctuate (text "; ") (map (\x -> text "try fold" <+> coqShow x <+> text s) xs))
   coqShow (TacticUnfold xs (Just s)) = text "unfold" <+> hsep (punctuate (text ", ") (map (\x -> coqShow x) xs)) <+> text s
   coqShow (TacticMatchExp mexp) = coqShow mexp
-  coqShow (TacticFunction name bs body) = coqShow "Ltac " <+> coqShow name <+> hsep (map coqShow bs) <+> text ":=" <$$> indent 2 (coqShow body)
+  coqShow (TacticFunction name bs body) = coqShow "Ltac " <+> coqShow name <+> hsep (map coqShow bs) <+> text ":=" <$$> indent 2 (coqShow body) <> text "."
   coqShow (TacticCall name args) = text name <+> text " " <+> hsep (map (parens . coqShow) args)

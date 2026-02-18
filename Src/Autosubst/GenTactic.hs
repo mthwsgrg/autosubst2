@@ -27,7 +27,7 @@ genAsApply xs = do
 -- I don't print implicit scopes along with the constructors (maybe add it later)
 -- I don't at the moment use SubstTy objects (maybe add it later for maintaining consistentcy with the other parts)
 -- Currently I use some existing functions to talk with signature, and also I define some myself. Some of the latter maybe redundant but I will remove it later.
-
+-- TODO : Look for redundancy between renaming/substitution generation functions and merge whenever possible.
 
 genHeuristics :: [TId] -> GenM Tactic
 genHeuristics xs = do
@@ -39,7 +39,7 @@ genHeuristics xs = do
 -- Takes a list of sorts and applies tactic equation generation function on each sort
 
 genForEachSort :: [TId] -> (TId -> GenM [TacticEquation]) -> GenM [TacticEquation]
-genForeachSort xs tacEqnGenerator = do
+genForEachSort xs tacEqnGenerator = do
   tacEqns <- mapM (\x -> tacEqnGenerator x) xs
   return $ concat tacEqns
 
@@ -56,24 +56,26 @@ genBindElimEqnsSort x = do
 genBindElimEqns :: Position -> GenM TacticEquation
 genBindElimEqns (Position bs (Atom x)) = do
   srts <- substOf x
-  let threeTermsFormer srt = do
-        let ss = genNames $ "s"++srt $ filter (\bndr -> [srt] == binderSorts bndr) bs
-        consedSub <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermId $ "?sigma"++srt)
+  let fourSubsFormer srt = do
+        let filteredBs = filter (\bndr -> [srt] == binderSorts bndr) bs
+        let ss = genNames ("s"++srt) $ filteredBs
+        let ts = genNames ("t"++srt) $ filteredBs
+        gexprSub  <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermId $ "?sigma"++srt)
         liftedSub <- upSubstS srt bs [TermId $ "sigma"++srt]
-        consedId <- conserWrtBinders bs (map (\s -> TermId s) ss) (var_ srt)
-        return $ (consedSub, (hd liftedSub), consedId)
-  threeTerms <- mapM (\srt -> threeTermsFormer srt) srts
-  hexprSubs <- let ss = genNames $ "t"++srt $ filter (\bndr -> [srt] == binderSorts bnds) bs in
-               return $ conserWrtBinders bs (map (\s -> TermId s) ss) (var_ srt)
-  let unzippedThree = unzip3 threeTerms 
-  let gexprSubs = case unzippedThree of (a,b,c) -> a 
-  let liftedSubs = case unzippedThree of (a,b,c) -> b
-  let consedIds  = case unzippedThree of (a,b,c) -> c
-  let gexpr = TermApp (subst_ x) $ gexprSubs ++ [TermId $ "?s"++srt]
-  let hexpr = TermApp (subst_ x) ? hexprSubs ++ [TermId $ "?t"++srt]
-  let gexprToUnify = TermApp (TermApp (subst_ x) liftedSubs) consedIds 
-  tacEqn <- unifyTacEqnFormer gexpr hexpr gexprToUnify       
-
+        consedId  <- conserWrtBinders bs (map (\s -> TermId s) ss) (TermId $ var_ srt)
+        hexprSub  <- conserWrtBinders bs (map (\t -> TermId t) ts) (TermId $ var_ srt)
+        return $ (gexprSub, (head liftedSub), consedId, hexprSub)
+  fourSubs <- mapM (\srt -> fourSubsFormer srt) srts
+  let unzippedFour = unzip4 fourSubs 
+  let gexprSubs  = case unzippedFour of (a,b,c,d) -> a 
+  let liftedSubs = case unzippedFour of (a,b,c,d) -> b
+  let consedIds  = case unzippedFour of (a,b,c,d) -> c
+  let hexprSubs  = case unzippedFour of (a,b,c,d) -> d
+  let gexpr = TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId $ "?s"++x]
+  let hexpr = TermApp (TermId $ subst_ x) $ hexprSubs ++ [TermId $ "?t"++x]
+  let gexprToUnify = TermApp (TermApp (TermId $ subst_ x) liftedSubs) consedIds 
+  tacEqn <- unifyTacEqnFormer gexpr hexpr gexprToUnify
+  return tacEqn
 
 
 
@@ -132,6 +134,7 @@ Hence We need to generate the unfolded and asimplified version of liftings.
 
   
 -- Function for asimplified lift for subsitutions.
+-- TODO : Change conser to conserWrtBinders
 asimpledLiftGenSub :: [Binder] -> (TId, Term) -> GenM Term
 asimpledLiftGenSub bs (srt, sigma) = do
   compTerms <- compFormer srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
@@ -220,7 +223,9 @@ varsFormer bs noVar =
 
 
 
--- prefix a string with question mark
+
+-- Some helper functions, and more general functions follows
+
 qmark_ :: String -> String
 qmark_ s = "?" ++ s
 
@@ -234,6 +239,24 @@ isPosArgAtom :: Position -> Bool
 isPosArgAtom (Position bs arg) = case arg of
                                 Atom _ -> True
                                 _ -> False
+
+-- note this uses foldl'
+conserWrtBinders :: [Binder] -> Terms -> Term -> GenM Term
+conserWrtBinders bs tms defSub =
+  let conser (bndr, tm) def =
+        case bndr of
+          Single _ -> TermApp cons_ [tm, def]
+          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, def] in
+  return $ foldl' (\tm bndrTm -> conser bndrTm tm ) defSub (zip bs tms)
+
+
+unifyTacEqnFormer :: Term -> Term -> Term -> GenM TacticEquation
+unifyTacEqnFormer gexpr hexpr toUnifyExpr =
+  let tacPattern = TacticPattern $ JustTerm gexpr in
+  let tacEqnInAction = TacticEquationTerm (TacticPattern $ JustTerm hexpr) $  TacticCall "unify" [JustTerm toUnifyExpr, JustString "hexp"] in
+  let tacAction = TacticMatchExp $ TacticMatch TacticSimpleMatch (MatchTerm $ JustString "hexp") $ [tacEqnInAction] in
+  return $ TacticEquationTerm  tacPattern tacAction
+
 
 {-
 -- generates variables of a sort in 
