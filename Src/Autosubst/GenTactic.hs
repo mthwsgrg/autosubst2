@@ -51,11 +51,43 @@ genBindElimEqnsSort x = do
   csList <- constructors x
   let binderPositions = concat $ map (\c -> case c of
                                               Constructor pms n pos -> filter (\p -> and [isPosArgAtom p, isPosBinder p]) pos) csList -- TODO: maybe a clean up function to remove repeated positions
-  eqns <- mapM (\p -> genBindElimEqns p) binderPositions
-  return eqns
+  eqnsSub <- mapM (\p -> genBindElimEqnsSub p) binderPositions
+  eqnsRen <- mapM (\p -> genBindElimEqnsRen p) binderPositions
+  return $ eqnsRen ++ eqnsSub -- Note ren should be before sub
   
-genBindElimEqns :: Position -> GenM TacticEquation
-genBindElimEqns (Position bs (Atom x)) = do
+
+
+
+-- TODO: Maybe try to generalise genBindElimEqnsRen/Sub into one later, but not now
+
+genBindElimEqnsRen :: Position -> GenM TacticEquation
+genBindElimEqnsRen (Position bs (Atom x)) = do
+  srts <- substOf x
+  let fourSubsFormer srt = do
+        let filteredBs = filter (\bndr -> [srt] == binderSorts bndr) bs
+        let ss = genNames ("s"++srt) $ filteredBs
+        let ts = genNames ("t"++srt) $ filteredBs
+        gexprSub  <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermApp (TermConst Comp) $ [TermId $ var_ srt ,TermId $ "?sigma"++srt]) qmark_
+        liftedSub <- upRen srt bs [TermId $ "sigma"++srt]
+        consedId  <- conserWrtBinders bs (map (\s -> TermId s) ss) (TermId $ var_ srt) id
+        hexprSub  <- conserWrtBinders bs (map (\t -> TermId (qmark_ t)) ts) (TermId $ var_ srt) (\s -> (qmark_ s) ++ "_")
+        return $ (gexprSub, (head liftedSub), consedId, hexprSub)
+  fourSubs <- mapM (\srt -> fourSubsFormer srt) srts
+  let unzippedFour = unzip4 fourSubs 
+  let gexprSubs  = case unzippedFour of (a,b,c,d) -> a 
+  let liftedSubs = case unzippedFour of (a,b,c,d) -> b
+  let consedIds  = case unzippedFour of (a,b,c,d) -> c
+  let hexprSubs  = case unzippedFour of (a,b,c,d) -> d
+  let gexpr = TermApp (TermId $ ren_ x) $ gexprSubs ++ [TermId $ "?s"++x]
+  let hexpr = TermApp (TermId $ ren_ x) $ hexprSubs ++ [TermId $ "?t"++x]
+  let gexprToUnify = TermApp (TermApp (TermId $ subst_ x) liftedSubs) consedIds 
+  tacEqn <- unifyTacEqnFormer gexpr hexpr gexprToUnify
+  return tacEqn
+
+
+
+genBindElimEqnsSub :: Position -> GenM TacticEquation
+genBindElimEqnsSub (Position bs (Atom x)) = do
   srts <- substOf x
   let fourSubsFormer srt = do
         let filteredBs = filter (\bndr -> [srt] == binderSorts bndr) bs
