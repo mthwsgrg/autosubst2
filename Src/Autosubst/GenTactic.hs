@@ -34,7 +34,8 @@ genHeuristics xs = do
   redLaws <- genForEachSort xs genRedLawsSort
   bindElimEqns <- genForEachSort xs genBindElimEqnsSort
   compLaws <- genForEachSort xs genCompLawsSort
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (redLaws ++ bindElimEqns ++ compLaws)
+  congrClos <- genForEachSort xs genCongrClosureSort
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (redLaws ++ bindElimEqns ++ compLaws ++ congrClos)
   return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
   
     
@@ -46,6 +47,36 @@ genForEachSort xs tacEqnGenerator = do
   return $ concat tacEqns
 
 
+
+
+
+
+genCongrClosureSortGeneral :: TId -> String -> GenM [TacticEquation]
+genCongrClosureSortGeneral x funName = do
+  csList <- constructors x
+  let genConsCase (Constructor pms name pos) = do
+        let posLeft = genNames "s" pos
+        let posRight = genNames "t" pos
+        let gexpr = TermApp (TermId name) $ (map (\p -> TermId $ qmark_ p) $ fst (unzip pms) ) ++ (map (\s -> TermId $ qmark_ s) posLeft)
+        let hexpr = TermApp (TermId name) $ (map (\p -> TermId $ (\p' -> (qmark_ p') ++ "_" ) p) $ fst (unzip pms) ) ++ (map (\s -> TermId $ qmark_ s) posRight)
+        let tacAction = let gexprTerms = (map (\p -> TermId p) $ fst (unzip pms))  ++ (map (\s -> TermId s) posLeft) in
+                        let hexprTerms = (map (\p -> TermId $ (\p' -> p' ++ "_" ) p) $ fst (unzip pms)) ++ (map (\s -> TermId s) posRight) in
+                        TacticSeq $ map (\fstSnd -> TacticCall funName [JustTerm $ fst fstSnd, JustTerm $ snd fstSnd]) $ zip gexprTerms hexprTerms
+        tacEqn <- tacNestedMatchClause gexpr hexpr tacAction
+        return tacEqn
+  let csListWithPos = filter (\c -> case c of
+                                      Constructor pms name pos -> not (pos == [])) csList
+  tacEqns <- mapM (\c -> genConsCase c) csListWithPos
+  return tacEqns
+
+
+
+genCongrClosureSort :: TId -> GenM [TacticEquation]
+genCongrClosureSort x = genCongrClosureSortGeneral x "heuristics"
+
+
+   
+        
 
 genCompLawsSort :: TId -> GenM [TacticEquation]
 genCompLawsSort x = do
@@ -96,7 +127,7 @@ genCompSubRenTacEqns x = do
    let compForSort (y,sigma) srtsNames = do
          srtsy <- substOf y
          return $  TermApp (TermConst Comp) [TermApp (TermId $ ren_ y) $ snd (unzip (filter (\srtName -> elem (fst srtName) srtsy) srtsNames)), sigma]
-   gexprSubs <- mapM (\srtName -> compForSort srtName $ zip srts (map (\tau -> TermId tau) rightSubsQ)) $ zip srts (map (\sigma -> TermId sigma) leftSubsQ) 
+   gexprSubs <- mapM (\srtName -> compForSort srtName $ zip srts (map (\tau -> TermId tau) rightSubsQ)) $ zip srts (map (\sigma -> TermId sigma) leftSubsQ)
    let gexpr = TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId "?s"]
    let gexprToUnify = TermApp (TermId $ ren_ x) $ (map (\tau -> TermId tau) rightSubs) ++ [TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId sigma) leftSubs) ++ [TermId "s"]]
    let hexpr = TermApp (TermId $ ren_ x) $ (map (\theta -> TermId theta) (genNames "?theta" srts)) ++[TermId "?t"] 
@@ -365,10 +396,17 @@ conserWrtBinders bs tms defSub pModifier =
 
 unifyTacEqnFormer :: Term -> Term -> Term -> GenM TacticEquation
 unifyTacEqnFormer gexpr hexpr toUnifyExpr =
+  let tacAction =  TacticCall "unify" [JustTerm toUnifyExpr, JustString "hexp"] in
+  tacNestedMatchClause gexpr hexpr tacAction
+  
+
+
+
+tacNestedMatchClause :: Term -> Term -> Tactic -> GenM TacticEquation
+tacNestedMatchClause gexpr hexpr tacAction =
   let tacPattern = TacticPattern $ JustTerm gexpr in
-  let tacEqnInAction = TacticEquationTerm (TacticPattern $ JustTerm hexpr) $  TacticCall "unify" [JustTerm toUnifyExpr, JustString "hexp"] in
-  let tacAction = TacticMatchExp $ TacticMatch TacticSimpleMatch (MatchTerm $ JustString "hexp") $ [tacEqnInAction] in
-  return $ TacticEquationTerm  tacPattern tacAction
+  let tacMatchExp = TacticMatchExp $ TacticMatch TacticSimpleMatch (MatchTerm $ JustString "hexp") $ [TacticEquationTerm (TacticPattern $ JustTerm hexpr) $ tacAction] in  
+  return $ TacticEquationTerm  tacPattern tacMatchExp
 
 
 {-
