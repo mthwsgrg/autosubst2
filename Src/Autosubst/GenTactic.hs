@@ -34,7 +34,7 @@ genHeuristics xs = do
   redLaws <- genForEachSort xs genRedLawsSort
   bindElimEqns <- genForEachSort xs genBindElimEqnsSort
   compLaws <- genForEachSort xs genCompLawsSort
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (redLaws ++ bindElimEqns)
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (redLaws ++ bindElimEqns ++ compLaws)
   return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
   
     
@@ -49,22 +49,45 @@ genForEachSort xs tacEqnGenerator = do
 
 genCompLawsSort :: TId -> GenM [TacticEquation]
 genCompLawsSort x = do
-  compCompTacEqns <- genCompCompTacEqns x
-  return compCompTacEqns
+  subSubTacEqns <- genCompSubSubTacEqns x
+  return [subSubTacEqns]
 
 
-genCompCompTacEqns :: TId -> GenM [TacticEquation]
-genCompCompTacEqns x = do
+genCompSubSubTacEqns :: TId -> GenM TacticEquation
+genCompSubSubTacEqns x = do
    srts <- substOf x
-   let leftSubs =  map (\sigma -> TermId sigma) (genNames "sigma" srts)
-   let rightSubs =  map (\tau -> TermId tau) (genNames "tau" srts)
-   let leftSubsQ = qmarkify leftSubs
-   let rightSubsQ = qmarkify rightSubs
+   let leftSubs =   genNames "sigma" srts
+   let rightSubs =  genNames "tau" srts
+   let leftSubsQ =  map (\sigma -> qmark_ sigma) leftSubs
+   let rightSubsQ = map (\tau -> qmark_ tau) rightSubs
    let compForSort (y,sigma) srtsNames = do
          srtsy <- substOf y
-         return $  TermApp (TermId subst_ y) $ snd (unzip (filter (\srtName -> elem (fst srtName) srtsy) srtsNames))
-   
-   
+         return $  TermApp (TermConst Comp) [TermApp (TermId $ subst_ y) $ snd (unzip (filter (\srtName -> elem (fst srtName) srtsy) srtsNames)), sigma]
+   gexprSubs <- mapM (\srtName -> compForSort srtName $ zip srts (map (\tau -> TermId tau) rightSubsQ)) $ zip srts (map (\sigma -> TermId sigma) leftSubsQ) 
+   let gexpr = TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId "?s"]
+   let gexprToUnify = TermApp (TermId $ subst_ x) $ (map (\tau -> TermId tau) rightSubs) ++ [TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId sigma) leftSubs) ++ [TermId "s"]]
+   let hexpr = TermApp (TermId $ subst_ x) $ (map (\theta -> TermId theta) (genNames "?theta" srts)) ++[TermId "?t"] 
+   tacEqn <- unifyTacEqnFormer gexpr hexpr gexprToUnify
+   return $ tacEqn
+
+genCompRenRenTacEqns :: TId -> GenM TacticEquation
+genCompRenRenTacEqns x = do
+   srts <- substOf x
+   let leftSubs =   genNames "sigma" srts
+   let rightSubs =  genNames "tau" srts
+   let leftSubsQ =  map (\sigma -> qmark_ sigma) leftSubs
+   let rightSubsQ = map (\tau -> qmark_ tau) rightSubs
+   let compForSort (y,sigma) srtsNames = do
+         srtsy <- substOf y
+         return $  TermApp (TermConst Comp) [TermApp (TermId $ subst_ y) $ snd (unzip (filter (\srtName -> elem (fst srtName) srtsy) srtsNames)), sigma]
+   gexprSubs <- mapM (\srtName -> compForSort srtName $ zip srts (map (\tau -> TermId tau) rightSubsQ)) $ zip srts (map (\sigma -> TermId sigma) leftSubsQ) 
+   let gexpr = TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId "?s"]
+   let gexprToUnify = TermApp (TermId $ subst_ x) $ (map (\tau -> TermId tau) rightSubs) ++ [TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId sigma) leftSubs) ++ [TermId "s"]]
+   let hexpr = TermApp (TermId $ subst_ x) $ (map (\theta -> TermId theta) (genNames "?theta" srts)) ++[TermId "?t"] 
+   tacEqn <- unifyTacEqnFormer gexpr hexpr gexprToUnify
+   return $ tacEq
+n
+
 
 
 genBindElimEqnsSort :: TId -> GenM [TacticEquation]
