@@ -174,24 +174,23 @@ genBindElimEqnsSort x = do
 genBindElimEqnsRen :: Position -> GenM TacticEquation
 genBindElimEqnsRen (Position bs (Atom x)) = do
   srts <- substOf x
-  let fourSubsFormer srt = do
+  let threeSubsFormer srt = do
         let filteredBs = filter (\bndr -> [srt] == binderSorts bndr) bs
         let ss = genNames ("s"++srt) $ filteredBs
         let ts = genNames ("t"++srt) $ filteredBs
-        gexprSub  <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermApp (TermConst Comp) $ [TermId $ var_ srt ,TermId $ "?sigma"++srt]) qmark_
-        liftedSub <- upRen srt bs [TermId $ "sigma"++srt]
-        consedId  <- conserWrtBinders bs (map (\s -> TermId s) ss) (TermId $ var_ srt) id
-        hexprSub  <- conserWrtBinders bs (map (\t -> TermId (qmark_ t)) ts) (TermId $ var_ srt) (\s -> (qmark_ s) ++ "_")
-        return $ (gexprSub, (head liftedSub), consedId, hexprSub)
-  fourSubs <- mapM (\srt -> fourSubsFormer srt) srts
-  let unzippedFour = unzip4 fourSubs 
-  let gexprSubs  = case unzippedFour of (a,b,c,d) -> a 
-  let liftedSubs = case unzippedFour of (a,b,c,d) -> b
-  let consedIds  = case unzippedFour of (a,b,c,d) -> c
-  let hexprSubs  = case unzippedFour of (a,b,c,d) -> d
-  let gexpr = TermApp (TermId $ ren_ x) $ gexprSubs ++ [TermId $ "?s"++x]
-  let hexpr = TermApp (TermId $ ren_ x) $ hexprSubs ++ [TermId $ "?t"++x]
-  let gexprToUnify = TermApp (TermApp (TermId $ subst_ x) liftedSubs) consedIds 
+        gexprSub  <- conserWrtBinders filteredBs (map (\s -> TermId (qmark_ s)) ss) (TermApp (TermConst Comp) $ [TermId $ var_ srt ,TermId $ "?sigma"++srt]) qmark_
+        consedId  <- conserWrtBinders filteredBs (map (\s -> TermId s) ss) (TermId $ var_ srt) id
+        hexprSub  <- conserWrtBinders filteredBs (map (\t -> TermId (qmark_ t)) ts) (TermId $ var_ srt) (\s -> (qmark_ s) ++ "_")
+        return $ (gexprSub, consedId, hexprSub)
+  threeSubs <- mapM (\srt -> threeSubsFormer srt) srts
+  let unzippedThree = unzip3 threeSubs 
+  let gexprSubs  = case unzippedThree of (a,b,c) -> a 
+  let consedIds  = case unzippedThree of (a,b,c) -> b
+  let hexprSubs  = case unzippedThree of (a,b,c) -> c
+  liftedSubs <-  mapM (\srtTm -> asimpledLiftGenRen bs srtTm id) $ zip srts (map (\srt -> TermId $ "sigma"++srt) srts)
+  let gexpr = TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId $ "?s"++x]
+  let hexpr = TermApp (TermId $ subst_ x) $ hexprSubs ++ [TermId $ "?t"++x]
+  let gexprToUnify = TermApp (TermId $ subst_ x) $  consedIds ++ [TermApp (TermId $ ren_ x) $ liftedSubs ++ [TermId $ "s"++x]]
   tacEqn <- unifyTacEqnFormer gexpr hexpr gexprToUnify
   return tacEqn
 
@@ -200,24 +199,23 @@ genBindElimEqnsRen (Position bs (Atom x)) = do
 genBindElimEqnsSub :: Position -> GenM TacticEquation
 genBindElimEqnsSub (Position bs (Atom x)) = do
   srts <- substOf x
-  let fourSubsFormer srt = do
+  let threeSubsFormer srt = do
         let filteredBs = filter (\bndr -> [srt] == binderSorts bndr) bs
         let ss = genNames ("s"++srt) $ filteredBs
         let ts = genNames ("t"++srt) $ filteredBs
-        gexprSub  <- conserWrtBinders bs (map (\s -> TermId (qmark_ s)) ss) (TermId $ "?sigma"++srt) qmark_
-        liftedSub <- upSubstS srt bs [TermId $ "sigma"++srt]
-        consedId  <- conserWrtBinders bs (map (\s -> TermId s) ss) (TermId $ var_ srt) id
-        hexprSub  <- conserWrtBinders bs (map (\t -> TermId (qmark_ t)) ts) (TermId $ var_ srt) (\s -> (qmark_ s) ++ "_")
-        return $ (gexprSub, (head liftedSub), consedId, hexprSub)
-  fourSubs <- mapM (\srt -> fourSubsFormer srt) srts
-  let unzippedFour = unzip4 fourSubs 
-  let gexprSubs  = case unzippedFour of (a,b,c,d) -> a 
-  let liftedSubs = case unzippedFour of (a,b,c,d) -> b
-  let consedIds  = case unzippedFour of (a,b,c,d) -> c
-  let hexprSubs  = case unzippedFour of (a,b,c,d) -> d
+        gexprSub  <- conserWrtBinders filteredBs (map (\s -> TermId (qmark_ s)) ss) (TermId $ "?sigma"++srt) qmark_
+        consedId  <- conserWrtBinders filteredBs (map (\s -> TermId s) ss) (TermId $ var_ srt) id
+        hexprSub  <- conserWrtBinders filteredBs (map (\t -> TermId (qmark_ t)) ts) (TermId $ var_ srt) (\s -> (qmark_ s) ++ "_")
+        return $ (gexprSub, consedId, hexprSub)
+  threeSubs <- mapM (\srt -> threeSubsFormer srt) srts
+  let unzippedThree = unzip3 threeSubs 
+  let gexprSubs  = case unzippedThree of (a,b,c) -> a 
+  let consedIds  = case unzippedThree of (a,b,c) -> b
+  let hexprSubs  = case unzippedThree of (a,b,c) -> c
+  liftedSubs <- mapM (\srtTm -> asimpledLiftGenSub bs srtTm id) $ zip srts (map (\srt -> TermId $ "sigma"++srt) srts)
   let gexpr = TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId $ "?s"++x]
   let hexpr = TermApp (TermId $ subst_ x) $ hexprSubs ++ [TermId $ "?t"++x]
-  let gexprToUnify = TermApp (TermApp (TermId $ subst_ x) liftedSubs) consedIds 
+  let gexprToUnify = TermApp (TermId $ subst_ x) $ consedIds ++ [TermApp (TermId $ subst_ x) $ liftedSubs ++ [TermId $ "s"++x]] 
   tacEqn <- unifyTacEqnFormer gexpr hexpr gexprToUnify
   return tacEqn
 
@@ -244,14 +242,17 @@ genRedLawsSort x = do
          return $ TacticEquationTerm  (TacticPattern $ JustTerm $ idApp name (qpnames++tms)) $
                   let paramTerms = map TermId pnames in
                   let posTerms = map TermId posNames in
-                  TacticCall "unify" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] 
-   tacEqnsSub <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenSub subst_) csList
-   tacEqnsRen <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenRen ren_) csList
+                  TacticCall "unify" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"]
+   let csListWithPos = filter (\c -> case c of
+                                      Constructor pms name pos -> not (pos == [])) csList
+  
+   tacEqnsSub <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenSub subst_) csListWithPos
+   tacEqnsRen <- mapM (\cs -> genRedLawsCons x cs asimpledLiftGenRen ren_) csListWithPos
    return $ tacEqnsSub ++ tacEqnsRen
    
 
 -- Generates (lifted) substitution/renaming term for an Argument bound under a list of Binder. 
-genVecArg ::  Argument -> [Binder] -> [(TId, Term)] -> ([Binder] -> (TId, Term) -> GenM Term) -> (TId -> String) -> GenM Term
+genVecArg ::  Argument -> [Binder] -> [(TId, Term)] -> ([Binder] -> (TId, Term) -> (String -> String) -> GenM Term) -> (TId -> String) -> GenM Term
 genVecArg (Atom y) bs subSorts renOrSubLift renOrSub = do
   b <- hasSubst y
   if b then do
@@ -260,7 +261,7 @@ genVecArg (Atom y) bs subSorts renOrSubLift renOrSub = do
                                              Just t  -> [ (y',t) ]
                                              Nothing -> []
                                               )) [] ySubSorts
-    subVectors <- mapM (\sub -> renOrSubLift bs sub) newSubSorts
+    subVectors <- mapM (\sub -> renOrSubLift bs sub qmark_) newSubSorts
     return $ idApp (renOrSub y) subVectors 
   else
     return $ (TermAbs [BinderName "x"] (TermId "x"))
@@ -279,42 +280,50 @@ Hence We need to generate the unfolded and asimplified version of liftings.
   
 -- Function for asimplified lift for subsitutions.
 -- TODO : Change conser to conserWrtBinders
-asimpledLiftGenSub :: [Binder] -> (TId, Term) -> GenM Term
-asimpledLiftGenSub bs (srt, sigma) = do
-  compTerms <- compFormer srt bs -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
-  varsList <- varsFormer (filter (\bndr -> [srt] == binderSorts bndr) bs) False
+asimpledLiftGenSub :: [Binder] -> (TId, Term) -> (String -> String) -> GenM Term
+asimpledLiftGenSub bs (srt, sigma) qmodifier = do
+  compTerms <- compFormer srt bs qmodifier -- if compTerms are empty, then srt or the sorts srts dependent on is not in bs list
+  varsList <- varsFormer (filter (\bndr -> [srt] == binderSorts bndr) bs) False qmodifier
   let conser (bndr, tm) tmDef =
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
-          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
+          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmodifier p), tm, tmDef]
   return $ if null compTerms then sigma else foldl' (\tm bndrTm -> conser bndrTm tm ) (TermApp (TermConst Comp) $ [(TermApp (TermId (ren_ srt)) compTerms), sigma]) varsList -- ther reversing because scoping is in the reverse order of polyadic binders in the HOAS spec
 
 
-asimpledLiftGenRen :: [Binder] -> (TId, Term) -> GenM Term
-asimpledLiftGenRen bs (srt, sigma) = do
+asimpledLiftGenRen :: [Binder] -> (TId, Term) -> (String -> String) -> GenM Term
+asimpledLiftGenRen bs (srt, sigma) qmodifier = do
   let bindersOfSrt = filter (\bndr -> [srt] == binderSorts bndr) bs
-  varsList <- varsFormer bindersOfSrt True
-  let compTerm = foldr (\bndr tm -> case bndr of
-                                      Single _ -> TermApp (TermConst Comp) [tm, TermConst Shift]
-                                      BinderList p _ -> TermApp (TermConst Comp) [tm, TermApp (TermId "shift_p") [TermId $ qmark_ p]]) sigma bindersOfSrt
+  varsList <- varsFormer bindersOfSrt True qmodifier
+  let compTerm = case bindersOfSrt of
+                   [] -> sigma
+                   Single _ : rest -> let composed = foldl' (\tm bndr -> case bndr of
+                                                                             Single _ -> TermApp (TermConst Comp) [tm, TermConst Shift]
+                                                                             BinderList p' _ -> TermApp (TermConst Comp) [tm, TermApp (TermId "shift_p") [TermId $ qmodifier p']]) (TermConst Shift) rest
+                                         in TermApp (TermConst Comp) [composed, sigma]
+                   BinderList p _ : rest ->  let shiftPdef = TermApp (TermId "shift_p") [TermId $ qmodifier p] in
+                                             let composed = foldl' (\tm bndr ->  case bndr of
+                                                                                    Single _ -> TermApp (TermConst Shift) [tm, TermConst Shift]
+                                                                                    BinderList p' _ -> TermApp (TermConst Comp) [tm, TermApp (TermId "shift_p") [TermId $ qmodifier p']]) shiftPdef rest
+                                             in TermApp (TermConst Comp) [composed, sigma]
   let conser (bndr, tm) tmDef =
         case bndr of
           Single _ -> TermApp cons_ [tm, tmDef]
-          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmark_ p), tm, tmDef]
+          BinderList p _ -> TermApp (TermId "scons_p") [TermId (qmodifier p), tm, tmDef]
   return $ foldl' (\tm bndrTm -> conser bndrTm tm ) compTerm varsList
       
     
   
 
 -- Perform appropriate shifting in a sort's substitution vector component with respect to a list of binders
-compFormer :: TId -> [Binder] -> GenM [Term]
-compFormer x bs = do
+compFormer :: TId -> [Binder] -> (String -> String) -> GenM [Term]
+compFormer x bs qmodifier = do
   subSorts <- substOf x
   if not (null (intersect (foldr (\bndr xs -> (binderSorts bndr) ++ xs) [] bs) subSorts))  then
      let shiftFromBinder bndr =
            case bndr of
              Single _ -> TermConst Shift
-             BinderList p _ -> TermApp (TermId "shift_p") [TermId (qmark_ p)] in
+             BinderList p _ -> TermApp (TermId "shift_p") [TermId (qmodifier p)] in
      let shiftComposer x' bndr tm =
            if [x'] == binderSorts bndr then
              case tm of
@@ -327,22 +336,22 @@ compFormer x bs = do
 
 
 -- Generates 0,1,p or (var 0),(var 1), (var p) with respect a list of binder for sconsing/sconsping. noVar is a bool if set won't generate var constructor
-varsFormer :: [Binder] -> Bool -> GenM [(Binder, Term)]
-varsFormer bs noVar =
+varsFormer :: [Binder] -> Bool -> (String -> String) -> GenM [(Binder, Term)]
+varsFormer bs noVar qmodifier =
   let finFormer bndr bs =
         case bndr of
           Single _ -> foldl' (\tm bndr' -> case bndr' of
                                              Single _ -> TermApp (TermConst Shift) [tm]
-                                             BinderList p _ -> TermApp (TermId "shift_p") [TermId (qmark_ p), tm])
+                                             BinderList p _ -> TermApp (TermId "shift_p") [TermId (qmodifier p), tm])
                       (TermConst VarZero) bs
-          BinderList p _ -> let zerop = (TermApp (TermId "zero_p") [TermId (qmark_ p)]) in
+          BinderList p _ -> let zerop = (TermApp (TermId "zero_p") [TermId (qmodifier p)]) in
                             foldr (\bndr' tm -> case tm of
                                                   TermApp c [h, z] -> case bndr' of
                                                                         Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
-                                                                        BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z]
+                                                                        BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmodifier p)]]  ,z]
                                                   _ -> case bndr' of
                                                             Single _ -> TermApp (TermConst Comp) [TermConst Shift, zerop]
-                                                            BinderList p _ -> TermApp (TermConst Comp) [TermApp (TermId "shift_p") [TermId (qmark_ p)], zerop])                                                 
+                                                            BinderList p _ -> TermApp (TermConst Comp) [TermApp (TermId "shift_p") [TermId (qmodifier p)], zerop])                                                 
                             zerop bs in
             
   let varFormer bndr bs =      
@@ -350,13 +359,13 @@ varsFormer bs noVar =
           Single x -> foldl' (\tm bndr' -> case tm of
                                              TermApp v ts -> case bndr' of
                                                               Single _ -> TermApp v [TermApp (TermConst Shift) ts]
-                                                              BinderList p _ -> TermApp v [TermApp (TermId "shift_p") $ [TermId (qmark_ p)] ++ ts])
+                                                              BinderList p _ -> TermApp v [TermApp (TermId "shift_p") $ [TermId (qmodifier p)] ++ ts])
                       (idApp (var_ x) $ [TermConst VarZero]) bs                 
           BinderList p x  -> foldr (\bndr' tm -> case tm of
                                                    TermApp c [h, z] -> case bndr' of
                                                                          Single _ -> TermApp c [TermApp (TermConst Comp) [h, TermConst Shift], z]
-                                                                         BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmark_ p)]]  ,z])
-                             (TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmark_ p)]]) bs in                  
+                                                                         BinderList p _ -> TermApp c [TermApp (TermConst Comp) [h, TermApp (TermId "shift_p") [TermId (qmodifier p)]]  ,z])
+                             (TermApp (TermConst Comp) [TermId (var_ x), TermApp (TermId "zero_p") [TermId (qmodifier p)]]) bs in                  
   let varsFormer' bs varOrFinFormer =
         case bs of
           [] -> []

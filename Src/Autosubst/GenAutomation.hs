@@ -51,7 +51,7 @@ genAutomation varSorts xs substSorts upList = do
   implicits <- genScopeImplicits
   instances <- genInstances substSorts varSorts
   notation <- genNotation varSorts substSorts upList
-  asApply <- genAsApply varSorts
+  asApply <- genAsApply substSorts
   bottomJunk <- genBottomJunk varSorts xs substSorts upList
   return $ implicits  ++ instances ++ notation ++ [unfold, unfold_star, asimpl', SentenceTactic "asimpl" (TacticSeq [TacticRepeat (TacticId "try unfold_funcomp"), TacticId "auto_unfold in *", TacticId "asimpl'", TacticRepeat (TacticId "try unfold_funcomp")])
               , SentenceId "Tactic Notation \"asimpl\" \"in\" hyp(J) := revert J; asimpl; intros J."
