@@ -54,6 +54,26 @@ genForEachSort xs tacEqnGenerator = do
 genCongrClosureSortGeneral :: TId -> String -> GenM [TacticEquation]
 genCongrClosureSortGeneral x funName = do
   csList <- constructors x
+  let genSubRenCompCases x = do
+        srts <- substOf x
+        let leftSubs = genNames "sigma" srts
+        let rightSubs = genNames "tau" srts
+        let gexprSub = TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId $ qmark_ sigma) leftSubs) ++ [TermId $ "?s"++x]
+        let hexprSub = TermApp (TermId $ subst_ x) $ (map (\tau -> TermId $ qmark_ tau) rightSubs) ++ [TermId $ "?t"++x]
+        let gexprRen = TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId $ qmark_ sigma) leftSubs) ++ [TermId $ "?s"++x]
+        let hexprRen = TermApp (TermId $ ren_ x) $ (map (\tau -> TermId $ qmark_ tau) rightSubs) ++ [TermId $ "?t"++x]
+        let gexprCompSub = TermApp (TermConst Comp) $ [TermApp (TermId $ subst_ x) $ map (\sigma -> TermId $ qmark_ sigma) leftSubs,  TermId "?sigma"]
+        let hexprCompSub = TermApp (TermConst Comp) $ [TermApp (TermId $ subst_ x) $ map (\tau -> TermId $ qmark_ tau) rightSubs, TermId "?tau"] 
+        let gexprCompRen = TermApp (TermConst Comp) $ [TermApp (TermId $ ren_ x) $ map (\sigma -> TermId $ qmark_ sigma) leftSubs, TermId "?sigma"]
+        let hexprCompRen = TermApp (TermConst Comp) $ [TermApp (TermId $ ren_ x) $ map (\tau -> TermId $ qmark_ tau) rightSubs, TermId "?tau"]
+        let funCallSubs = let gexprSubs = map (\sigma -> TermId sigma) leftSubs in
+                              let hexprSubs = map (\tau -> TermId tau) rightSubs in
+                              map (\(g,h) -> TacticCall funName [JustTerm g, JustTerm h]) $ zip gexprSubs hexprSubs  
+        tacEqnSub <- tacNestedMatchClause gexprSub hexprSub $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "s", JustTerm $ TermId $ "t"]] ++ funCallSubs
+        tacEqnRen <- tacNestedMatchClause gexprRen hexprRen $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "s", JustTerm $ TermId $ "t"]] ++ funCallSubs
+        tacEqnCompSub <-tacNestedMatchClause gexprCompSub hexprCompSub $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "sigma", JustTerm $ TermId $ "tau"]] ++ funCallSubs
+        tacEqnCompRen <-tacNestedMatchClause gexprCompRen hexprCompRen $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "sigma", JustTerm $ TermId $ "tau"]] ++ funCallSubs
+        return $ [tacEqnSub, tacEqnRen, tacEqnCompSub, tacEqnCompRen]
   let genConsCase (Constructor pms name pos) = do
         let posLeft = genNames "s" pos
         let posRight = genNames "t" pos
@@ -63,11 +83,12 @@ genCongrClosureSortGeneral x funName = do
                         let hexprTerms = (map (\p -> TermId $ (\p' -> p' ++ "_" ) p) $ fst (unzip pms)) ++ (map (\s -> TermId s) posRight) in
                         TacticSeq $ map (\fstSnd -> TacticCall funName [JustTerm $ fst fstSnd, JustTerm $ snd fstSnd]) $ zip gexprTerms hexprTerms
         tacEqn <- tacNestedMatchClause gexpr hexpr tacAction
-        return tacEqn
+        return $ tacEqn
   let csListWithPos = filter (\c -> case c of
                                       Constructor pms name pos -> not (pos == [])) csList
-  tacEqns <- mapM (\c -> genConsCase c) csListWithPos
-  return tacEqns
+  tacEqns1 <- mapM (\c -> genConsCase c) csListWithPos
+  tacEqns2 <- genSubRenCompCases x
+  return $ tacEqns1 ++ tacEqns2
 
 
 
