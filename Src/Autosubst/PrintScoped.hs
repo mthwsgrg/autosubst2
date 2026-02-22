@@ -204,5 +204,7 @@ instance CoqShow Tactic where
   coqShow (TacticFold xs (Just s)) = hsep (punctuate (text "; ") (map (\x -> text "try fold" <+> coqShow x <+> text s) xs))
   coqShow (TacticUnfold xs (Just s)) = text "unfold" <+> hsep (punctuate (text ", ") (map (\x -> coqShow x) xs)) <+> text s
   coqShow (TacticMatchExp mexp) = coqShow mexp
-  coqShow (TacticFunction name bs body) = coqShow "Ltac " <+> coqShow name <+> hsep (map coqShow bs) <+> text ":=" <$$> indent 2 (coqShow body) <> text "."
+  coqShow (TacticFunction name bs body) = text "Ltac " <+> coqShow name <+> hsep (map coqShow bs) <+> text ":=" <$$> indent 2 (coqShow body) <> text "."
   coqShow (TacticCall name args) = text name <+> text " " <+> hsep (map (parens . coqShow) args)
+  coqShow (TacticAssert (lhsEq,rhsEq) tacTerm tacAction) = text "assert" <+> text "(" <> coqShow lhsEq <+> text "=" <+> coqShow rhsEq <> text ") as" <+> coqShow tacTerm <+> text "by" <+> text "(" <> coqShow tacAction <> text ")"
+  coqShow (TacticLet (lhsEq, rhsEq) bodyTac) = text "let" <+> coqShow lhsEq <+> text ":=" <+> coqShow rhsEq <+> text "in" <$$> coqShow bodyTac -- TODO (MG) : maybe improve alignment later

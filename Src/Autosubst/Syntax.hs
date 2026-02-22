@@ -96,6 +96,8 @@ data Tactic = TacticRewrite (Maybe String) [String] [String] [String]
               | TacticFunction Identifier [CBinder] TacticMatch
               | TacticMatchExp TacticMatch
               | TacticCall Identifier [TacticTerm] -- Calling tactic functions with arguments
+              | TacticAssert (TacticTerm, TacticTerm) TacticTerm Tactic
+              | TacticLet (TacticTerm, TacticTerm) Tactic
 
 data Sort = Prop
           | Set

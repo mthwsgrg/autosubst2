@@ -35,7 +35,9 @@ genHeuristics xs = do
   bindElimEqns <- genForEachSort xs genBindElimEqnsSort
   compLaws <- genForEachSort xs genCompLawsSort
   congrClos <- genForEachSort xs genCongrClosureSort
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (redLaws ++ bindElimEqns ++ compLaws ++ congrClos)
+  renamifyCases <- genForEachSort xs genRenamify
+  substifyCases <- genForEachSort xs genSubstify
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (bindElimEqns ++ renamifyCases ++ substifyCases ++ redLaws ++ compLaws ++ congrClos)
   return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
   
     
@@ -48,6 +50,67 @@ genForEachSort xs tacEqnGenerator = do
 
 
 
+genRenamify :: TId -> GenM [TacticEquation]
+genRenamify x = do
+  srts <- substOf x
+  let leftSubs = genNames "sigma" srts
+  let rightSubs = genNames "tau" srts
+  let gexprSubs = map (\(srt,sigma) -> renAsSub srt (qmark_ sigma)) $ zip srts leftSubs
+  let hexprSubs = map (\tau -> TermId $ qmark_ tau) rightSubs
+  let compEqn =  let gexpr = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) gexprSubs, TermId $ "?sigma"] in
+                 let hexpr = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x)  hexprSubs, TermId $ "?tau"] in
+                 let unifExpr = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) (map (\sigma -> TermId $ sigma ) leftSubs), TermId $ "sigma"] in
+                 let tacAction = let act1 = let eqnLeft = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x)  (map (\(srt,sigma) -> renAsSub srt sigma) $ zip srts leftSubs), TermId $ "sigma"] in
+                                            TacticAssert (JustTerm eqnLeft, JustTerm unifExpr)  (JustString $ "eq") $ TacticSeq [TacticId "renamify", TacticId "reflexivity"] in
+                                 let act2 = TacticCall "rewrite" [JustString "eq"] in
+                                 let act3 = TacticCall "unify" [JustTerm unifExpr, JustString "hexp"] in
+                                 let act4 = TacticId "clear eq" in
+                                 TacticLet (JustString "eq", JustString "fresh \"eq\"") $ TacticSeq [act1, act2, act3, act4] in
+                 tacNestedMatchClause gexpr hexpr tacAction
+  let substEqn = let gexpr = TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId $ "?s"] in
+                 let hexpr = TermApp (TermId $ ren_ x) $ hexprSubs ++ [TermId $ "?t"] in
+                 let unifExpr = TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId $ sigma ) leftSubs) ++ [TermId "s"] in
+                 let tacAction = let act1 = let eqnLeft = TermApp (TermId $ subst_ x) $ (map (\(srt,sigma) -> renAsSub srt sigma) $ zip srts leftSubs)  ++ [TermId "s"]  in
+                                            TacticAssert (JustTerm eqnLeft, JustTerm unifExpr)  (JustString $ "eq") $ TacticSeq [TacticId "renamify", TacticId "reflexivity"] in
+                                 let act2 = TacticCall "rewrite" [JustString "eq"] in
+                                 let act3 = TacticCall "unify" [JustTerm unifExpr, JustString "hexp"] in
+                                 let act4 = TacticId "clear eq" in
+                                 TacticLet (JustString "eq", JustString "fresh \"eq\"") $ TacticSeq [act1, act2, act3, act4] in
+                 tacNestedMatchClause gexpr hexpr tacAction
+  tacEqn1 <- compEqn
+  tacEqn2 <- substEqn
+  return $ [tacEqn1, tacEqn2]
+
+genSubstify :: TId -> GenM [TacticEquation]
+genSubstify x = do
+  srts <- substOf x
+  let leftSubs = genNames "sigma" srts
+  let rightSubs = genNames "tau" srts
+  let gexprSubs = map (\sigma -> TermId $ qmark_ sigma) leftSubs
+  let hexprSubs = map (\tau -> TermId $ qmark_ tau) rightSubs
+  let compEqn =  let gexpr = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) gexprSubs, TermId $ "?sigma"] in
+                 let hexpr = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x)  hexprSubs, TermId $ "?tau"] in
+                 let unifExpr = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) (map (\(srt,sigma) -> renAsSub srt sigma ) $ zip srts leftSubs), TermId $ "sigma"] in
+                 let tacAction = let act1 = let eqnLeft = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x)  (map (\sigma -> TermId $ sigma) leftSubs), TermId $ "sigma"] in
+                                            TacticAssert (JustTerm eqnLeft, JustTerm unifExpr)  (JustString $ "eq") $ TacticSeq [TacticId "substify", TacticId "reflexivity"] in
+                                 let act2 = TacticCall "rewrite" [JustString "eq"] in
+                                 let act3 = TacticCall "unify" [JustTerm unifExpr, JustString "hexp"] in
+                                 let act4 = TacticId "clear eq" in
+                                 TacticLet (JustString "eq", JustString "fresh \"eq\"") $ TacticSeq [act1, act2, act3,act4] in
+                 tacNestedMatchClause gexpr hexpr tacAction
+  let substEqn = let gexpr = TermApp (TermId $ ren_ x) $ gexprSubs ++ [TermId $ "?s"] in
+                 let hexpr = TermApp (TermId $ subst_ x) $ hexprSubs ++ [TermId $ "?t"] in
+                 let unifExpr = TermApp (TermId $ subst_ x) $ (map (\(srt,sigma) -> renAsSub srt sigma ) $ zip srts leftSubs) ++ [TermId "s"] in
+                 let tacAction = let act1 = let eqnLeft = TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId $ sigma) leftSubs)  ++ [TermId "s"] in
+                                            TacticAssert (JustTerm eqnLeft, JustTerm unifExpr)  (JustString $ "eq") $ TacticSeq [TacticId "renamify", TacticId "reflexivity"] in
+                                 let act2 = TacticCall "rewrite" [JustString "eq"] in
+                                 let act3 = TacticCall "unify" [JustTerm unifExpr, JustString "hexp"] in
+                                 let act4 = TacticId "clear eq" in
+                                 TacticLet (JustString "eq", JustString "fresh \"eq\"") $ TacticSeq [act1, act2, act3, act4] in
+                 tacNestedMatchClause gexpr hexpr tacAction
+  tacEqn1 <- compEqn
+  tacEqn2 <- substEqn
+  return $ [tacEqn1, tacEqn2]
 
 
 
@@ -413,6 +476,9 @@ isPosArgAtom :: Position -> Bool
 isPosArgAtom (Position bs arg) = case arg of
                                    Atom _ -> True
                                    _ -> False
+
+renAsSub :: TId -> String -> Term
+renAsSub x xi = TermApp (TermConst Comp) [TermId $ var_ x,TermId xi]
 
 -- note this uses foldl'
 conserWrtBinders :: [Binder] -> Terms -> Term -> (String -> String) -> GenM Term
