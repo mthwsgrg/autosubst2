@@ -121,10 +121,10 @@ genCongrClosureSortGeneral x funName = do
         srts <- substOf x
         let leftSubs = genNames "sigma" srts
         let rightSubs = genNames "tau" srts
-        let gexprSub = TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId $ qmark_ sigma) leftSubs) ++ [TermId $ "?s"++x]
-        let hexprSub = TermApp (TermId $ subst_ x) $ (map (\tau -> TermId $ qmark_ tau) rightSubs) ++ [TermId $ "?t"++x]
-        let gexprRen = TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId $ qmark_ sigma) leftSubs) ++ [TermId $ "?s"++x]
-        let hexprRen = TermApp (TermId $ ren_ x) $ (map (\tau -> TermId $ qmark_ tau) rightSubs) ++ [TermId $ "?t"++x]
+        let gexprSub = TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId $ qmark_ sigma) leftSubs) ++ [TermId $ "?s"]
+        let hexprSub = TermApp (TermId $ subst_ x) $ (map (\tau -> TermId $ qmark_ tau) rightSubs) ++ [TermId $ "?t"]
+        let gexprRen = TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId $ qmark_ sigma) leftSubs) ++ [TermId $ "?s"]
+        let hexprRen = TermApp (TermId $ ren_ x) $ (map (\tau -> TermId $ qmark_ tau) rightSubs) ++ [TermId $ "?t"]
         let gexprCompSub = TermApp (TermConst Comp) $ [TermApp (TermId $ subst_ x) $ map (\sigma -> TermId $ qmark_ sigma) leftSubs,  TermId "?sigma"]
         let hexprCompSub = TermApp (TermConst Comp) $ [TermApp (TermId $ subst_ x) $ map (\tau -> TermId $ qmark_ tau) rightSubs, TermId "?tau"] 
         let gexprCompRen = TermApp (TermConst Comp) $ [TermApp (TermId $ ren_ x) $ map (\sigma -> TermId $ qmark_ sigma) leftSubs, TermId "?sigma"]
