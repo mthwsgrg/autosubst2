@@ -50,8 +50,10 @@ genMuSigma xs = do
   unifyCase <- genUnifyCase
   redLaws <- genForEachSort xs genRedCasesSort
   compLaws <- genForEachSort xs genCompCasesSort
+  assocLaws <- genForEachSort xs genAssocCasesSort
+  mapEnvLaws <- genForEachSort xs genMapEnvCasesSort
   congrClos <- genForEachSort xs (\x -> genCongrClosureSortGeneral x "musigma")
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ redLaws ++ compLaws ++ congrClos)
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ redLaws ++ compLaws ++ assocLaws ++ mapEnvLaws ++ congrClos)
   return $ TacticFunction "musigma" [BinderName "gexp", BinderName "hexp"] matchBody
 
 
@@ -219,8 +221,43 @@ genRedCasesSort x = do
    return $ tacEqnsSub ++ tacEqnsRen
    
 
+genMapEnvCasesSort :: TId -> GenM [TacticEquation]
+genMapEnvCasesSort x = do
+  mapRenEqn <- genMapRenCases x
+  mapSubEqn <- genMapSubCases x
+  return [mapRenEqn, mapSubEqn]
    
         
+genMapRenCases :: TId -> GenM TacticEquation
+genMapRenCases x = do
+  srts <- substOf x
+  let leftSubs =   genNames "sigma" srts
+  let rightSubs =  genNames "tau" srts
+  let gexprSubs =  map (\sigma -> TermId $ qmark_ sigma) leftSubs
+  let hexprSubs = map (\tau -> TermId $ qmark_ tau) rightSubs 
+  let gexpr = TermApp (TermConst Cons) [TermApp (TermId $ ren_ x) $ gexprSubs ++ [TermId "?s"],
+                                        TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ gexprSubs, TermId "?thetag"]]
+  let hexpr = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ hexprSubs, TermId "?thetah"]
+  let gexprToUnify = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ (map (\x -> TermId x) leftSubs) ,TermApp (TermConst Cons) [TermId "s", TermId "thetag"]]
+  tacEqn <- firstTacEqnFormer gexpr hexpr gexprToUnify
+  return $ tacEqn
+
+
+genMapSubCases :: TId -> GenM TacticEquation
+genMapSubCases x = do
+  srts <- substOf x
+  let leftSubs =   genNames "sigma" srts
+  let rightSubs =  genNames "tau" srts
+  let gexprSubs =  map (\sigma -> TermId $ qmark_ sigma) leftSubs
+  let hexprSubs = map (\tau -> TermId $ qmark_ tau) rightSubs 
+  let gexpr = TermApp (TermConst Cons) [TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId "?s"],
+                                        TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ gexprSubs, TermId "?thetag"]]
+  let hexpr = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ hexprSubs, TermId "?thetah"]
+  let gexprToUnify = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ (map (\x -> TermId x) leftSubs) ,TermApp (TermConst Cons) [TermId "s", TermId "thetag"]]
+  tacEqn <- firstTacEqnFormer gexpr hexpr gexprToUnify
+  return $ tacEqn
+
+
 
 genCompCasesSort :: TId -> GenM [TacticEquation]
 genCompCasesSort x = do
@@ -295,6 +332,97 @@ genCompSubSubCases x = do
    let hexpr = TermApp (TermId $ subst_ x) $ (map (\theta -> TermId theta) (genNames "?theta" srts)) ++[TermId "?t"] 
    tacEqn <- firstTacEqnFormer gexpr hexpr gexprToUnify
    return $ tacEqn
+
+
+
+
+genAssocCasesSort :: TId -> GenM [TacticEquation]
+genAssocCasesSort x = do
+  renRenTacEqn <- genAssocRenRenCases x
+  renSubTacEqn <- genAssocRenSubCases x
+  subRenTacEqn <- genAssocSubRenCases x
+  subSubTacEqn <- genAssocSubSubCases x 
+  return [renRenTacEqn, renSubTacEqn, subRenTacEqn, subSubTacEqn]
+
+
+
+
+genAssocRenRenCases :: TId -> GenM TacticEquation
+genAssocRenRenCases x = do
+   srts <- substOf x
+   let leftSubs =   genNames "sigma" srts
+   let rightSubs =  genNames "tau" srts
+   let leftSubsQ =  map (\sigma -> qmark_ sigma) leftSubs
+   let rightSubsQ = map (\tau -> qmark_ tau) rightSubs 
+   let gexpr = let gexprSubs = map (\sigmaTau -> TermApp (TermConst Comp) [snd sigmaTau, fst sigmaTau]) $ zip (map (\sigma -> TermId sigma) leftSubsQ) (map (\tau -> TermId tau) rightSubsQ) in
+               TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ gexprSubs, TermId "?sigmas"]
+   let gexprToUnify = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ (map (\tau -> TermId tau) rightSubs),
+                                                TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId sigma) leftSubs), TermId "sigmas"]]
+   let hexpr = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ (map (\theta -> TermId theta) (genNames "?theta" srts)), TermId "?sigmat"] 
+   tacEqn <- firstTacEqnFormer gexpr hexpr gexprToUnify
+   return $ tacEqn
+
+
+
+
+genAssocRenSubCases :: TId -> GenM TacticEquation
+genAssocRenSubCases x = do
+   srts <- substOf x
+   let leftSubs =   genNames "sigma" srts
+   let rightSubs =  genNames "tau" srts
+   let leftSubsQ =  map (\sigma -> qmark_ sigma) leftSubs
+   let rightSubsQ = map (\tau -> qmark_ tau) rightSubs 
+   let gexpr = let gexprSubs = map (\sigmaTau -> TermApp (TermConst Comp) [snd sigmaTau, fst sigmaTau]) $ zip (map (\sigma -> TermId sigma) leftSubsQ) (map (\tau -> TermId tau) rightSubsQ) in
+               TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ gexprSubs, TermId "?sigmas"]
+   let gexprToUnify = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ (map (\tau -> TermId tau) rightSubs),
+                                                TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId sigma) leftSubs), TermId "sigmas"]]
+   let hexpr = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ (map (\theta -> TermId theta) (genNames "?theta" srts)), TermId "?sigmat"] 
+   tacEqn <- firstTacEqnFormer gexpr hexpr gexprToUnify
+   return $ tacEqn
+
+
+genAssocSubRenCases :: TId -> GenM TacticEquation
+genAssocSubRenCases x = do
+   srts <- substOf x
+   let leftSubs =   genNames "sigma" srts
+   let rightSubs =  genNames "tau" srts
+   let leftSubsQ =  map (\sigma -> qmark_ sigma) leftSubs
+   let rightSubsQ = map (\tau -> qmark_ tau) rightSubs
+   let compForSort (y,sigma) srtsNames = do
+         srtsy <- substOf y
+         return $  TermApp (TermConst Comp) [TermApp (TermId $ ren_ y) $ snd (unzip (filter (\srtName -> elem (fst srtName) srtsy) srtsNames)), sigma]
+   gexprSubs <- mapM (\srtName -> compForSort srtName $ zip srts (map (\tau -> TermId tau) rightSubsQ)) $ zip srts (map (\sigma -> TermId sigma) leftSubsQ)
+   let gexpr = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ gexprSubs, TermId "?sigmas"]
+   let gexprToUnify = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ (map (\tau -> TermId tau) rightSubs),
+                                                TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId sigma) leftSubs), TermId "sigmas"]]
+   let hexpr = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x) $ (map (\theta -> TermId theta) (genNames "?theta" srts)), TermId "?sigmat"] 
+   tacEqn <- firstTacEqnFormer gexpr hexpr gexprToUnify
+   return $ tacEqn
+
+
+genAssocSubSubCases :: TId -> GenM TacticEquation
+genAssocSubSubCases x = do
+   srts <- substOf x
+   let leftSubs =   genNames "sigma" srts
+   let rightSubs =  genNames "tau" srts
+   let leftSubsQ =  map (\sigma -> qmark_ sigma) leftSubs
+   let rightSubsQ = map (\tau -> qmark_ tau) rightSubs
+   let compForSort (y,sigma) srtsNames = do
+         srtsy <- substOf y
+         return $  TermApp (TermConst Comp) [TermApp (TermId $ subst_ y) $ snd (unzip (filter (\srtName -> elem (fst srtName) srtsy) srtsNames)), sigma]
+   gexprSubs <- mapM (\srtName -> compForSort srtName $ zip srts (map (\tau -> TermId tau) rightSubsQ)) $ zip srts (map (\sigma -> TermId sigma) leftSubsQ)
+   let gexpr = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ gexprSubs, TermId "?sigmas"]
+   let gexprToUnify = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ (map (\tau -> TermId tau) rightSubs),
+                                                TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId sigma) leftSubs), TermId "sigmas"]]
+   let hexpr = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x) $ (map (\theta -> TermId theta) (genNames "?theta" srts)), TermId "?sigmat"] 
+   tacEqn <- firstTacEqnFormer gexpr hexpr gexprToUnify
+   return $ tacEqn
+
+
+
+
+
+
 
 
 
