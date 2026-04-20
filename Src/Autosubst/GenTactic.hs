@@ -20,8 +20,9 @@ import           Data.List                as L
 
 genAsApply :: [TId] -> GenM [Sentence]
 genAsApply xs = do
+  musigma <- genMuSigma xs
   heuristics <- genHeuristics xs
-  return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral $ heuristics]
+  return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral musigma] ++ [SentenceTacticGeneral $ heuristics]
 
 
 -- I don't print implicit scopes along with the constructors (maybe add it later)
@@ -44,6 +45,17 @@ genHeuristics xs = do
   
     
 -- Takes a list of sorts and applies tactic equation generation function on each sort
+
+genMuSigma :: [TId] -> GenM Tactic
+genMuSigma xs = do
+  unifyCase <- genUnifyCase
+  redLaws <- genForEachSort xs genRedCasesSort
+  compLaws <- genForEachSort xs genCompCasesSort
+  congrClos <- genForEachSort xs genCongrClosureSort
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ redLaws ++ compLaws ++ congrClos)
+  return $ TacticFunction "musigma" [BinderName "gexp", BinderName "hexp"] matchBody
+
+
 
 
 
