@@ -36,11 +36,10 @@ genHeuristics xs = do
   bindElimEqns <- genForEachSort xs genBindElimEqnsSort
   renamifyCases <- genForEachSort xs genRenamify
   substifyCases <- genForEachSort xs genSubstify
-  redLaws <- genForEachSort xs genRedCasesSort
-  compLaws <- genForEachSort xs genCompCasesSort
+  mucase <- genMuSigmaCase
   congrClos <- genForEachSort xs genCongrClosureSort
   idCases <- genIdLaws xs
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ bindElimEqns ++ renamifyCases ++ substifyCases ++ redLaws ++ compLaws ++ congrClos ++ idCases)
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ renamifyCases ++ substifyCases ++ [mucase] ++ bindElimEqns ++ idCases ++ congrClos)
   return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
   
     
@@ -51,7 +50,7 @@ genMuSigma xs = do
   unifyCase <- genUnifyCase
   redLaws <- genForEachSort xs genRedCasesSort
   compLaws <- genForEachSort xs genCompCasesSort
-  congrClos <- genForEachSort xs genCongrClosureSort
+  congrClos <- genForEachSort xs (\x -> genCongrClosureSortGeneral x "musigma")
   let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ redLaws ++ compLaws ++ congrClos)
   return $ TacticFunction "musigma" [BinderName "gexp", BinderName "hexp"] matchBody
 
@@ -210,7 +209,7 @@ genRedCasesSort x = do
                   let paramTerms = map TermId pnames in
                   let posTerms = map TermId posNames in
                   let tacOne = TacticCall "unify" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] in
-                  let tacTwo = TacticCall "heuristics" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] in 
+                  let tacTwo = TacticCall "musigma" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] in 
                   TacticFirst [tacOne,tacTwo]
    let csListWithPos = filter (\c -> case c of
                                       Constructor pms name pos -> not (pos == [])) csList
@@ -344,6 +343,12 @@ genUnifyCase :: GenM TacticEquation
 genUnifyCase = do
   let tacAction = TacticCall "unify" [JustString "gexp", JustString "hexp"]
   return $ TacticEquationTerm (TacticPattern (JustTerm $ TermId "?s")) $ tacAction
+
+genMuSigmaCase :: GenM TacticEquation
+genMuSigmaCase = do
+  let tacAction = TacticCall "musigma" [JustString "gexp", JustString "hexp"]
+  return $ TacticEquationTerm (TacticPattern (JustTerm $ TermId "?s")) $ tacAction
+
 
 
 
@@ -550,7 +555,7 @@ unifyTacEqnFormer gexpr hexpr toUnifyExpr =
 firstTacEqnFormer :: Term -> Term -> Term -> GenM TacticEquation
 firstTacEqnFormer gexpr hexpr toUnifyExpr =
   let tacOne =  TacticCall "unify" [JustTerm toUnifyExpr, JustString "hexp"] in
-  let tacTwo =  TacticCall "heuristics" [JustTerm toUnifyExpr, JustString "hexp"] in  
+  let tacTwo =  TacticCall "musigma" [JustTerm toUnifyExpr, JustString "hexp"] in  
   tacNestedMatchClause gexpr hexpr (TacticFirst [tacOne,tacTwo])
   
 
