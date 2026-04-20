@@ -98,6 +98,7 @@ data Tactic = TacticRewrite (Maybe String) [String] [String] [String]
               | TacticCall Identifier [TacticTerm] -- Calling tactic functions with arguments
               | TacticAssert (TacticTerm, TacticTerm) TacticTerm Tactic
               | TacticLet (TacticTerm, TacticTerm) Tactic
+              | TacticFirst [Tactic]
 
 data Sort = Prop
           | Set

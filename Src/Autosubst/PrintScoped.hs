@@ -208,3 +208,4 @@ instance CoqShow Tactic where
   coqShow (TacticCall name args) = text name <+> text " " <+> hsep (map (parens . coqShow) args)
   coqShow (TacticAssert (lhsEq,rhsEq) tacTerm tacAction) = text "assert" <+> text "(" <> coqShow lhsEq <+> text "=" <+> coqShow rhsEq <> text ") as" <+> coqShow tacTerm <+> text "by" <+> text "(" <> coqShow tacAction <> text ")"
   coqShow (TacticLet (lhsEq, rhsEq) bodyTac) = text "let" <+> coqShow lhsEq <+> text ":=" <+> coqShow rhsEq <+> text "in" <$$> coqShow bodyTac -- TODO (MG) : maybe improve alignment later
+  coqShow (TacticFirst ts) = text "first" <+> text "[" <+> hsep (punctuate (text "| ") (map (\t -> coqShow t) ts)) <+> text "]"
