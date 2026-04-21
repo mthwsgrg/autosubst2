@@ -170,7 +170,7 @@ instance CoqShow TacticMatchHyp where
   coqShow (HypForm1 t1 t2) = coqShow t1 <+> text ":" <+> coqShow t2
 
 instance CoqShow TacticGoalPattern where
-  coqShow (TacticGoalPattern hyps concl) = text "[" <+> hsep (map coqShow hyps) <+> coqShow concl <+> text "]"
+  coqShow (TacticGoalPattern hyps concl) = text "[ " <+> hsep (map coqShow hyps) <+> text "|- " <+> coqShow concl <+> text "]"
 
 instance CoqShow TacticMatchItem where
   coqShow (MatchTerm t) = coqShow t

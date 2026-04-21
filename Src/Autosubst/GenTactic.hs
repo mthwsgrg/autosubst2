@@ -22,7 +22,8 @@ genAsApply :: [TId] -> GenM [Sentence]
 genAsApply xs = do
   musigma <- genMuSigma xs
   heuristics <- genHeuristics xs
-  return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral musigma] ++ [SentenceTacticGeneral $ heuristics]
+  matchConclGoal <- genMatchConclGoal 9
+  return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral musigma] ++ [SentenceTacticGeneral $ heuristics] ++ [SentenceTacticGeneral $ matchConclGoal] 
 
 
 -- I don't print implicit scopes along with the constructors (maybe add it later)
@@ -40,7 +41,7 @@ genHeuristics xs = do
   congrClos <- genForEachSort xs genCongrClosureSort
   idCases <- genIdLaws xs
   let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ renamifyCases ++ substifyCases ++ [mucase] ++ bindElimEqns ++ idCases ++ congrClos)
-  return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] matchBody
+  return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] (TacticMatchExp matchBody)
   
     
 -- Takes a list of sorts and applies tactic equation generation function on each sort
@@ -54,7 +55,7 @@ genMuSigma xs = do
   mapEnvLaws <- genForEachSort xs genMapEnvCasesSort
   congrClos <- genForEachSort xs (\x -> genCongrClosureSortGeneral x "musigma")
   let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ redLaws ++ compLaws ++ assocLaws ++ mapEnvLaws ++ congrClos)
-  return $ TacticFunction "musigma" [BinderName "gexp", BinderName "hexp"] matchBody
+  return $ TacticFunction "musigma" [BinderName "gexp", BinderName "hexp"] (TacticMatchExp matchBody)
 
 
 
@@ -647,6 +648,45 @@ varsFormer bs noVar qmodifier =
 
 
 
+
+
+
+
+-- Preprocessing steps start
+
+genMatchConclGoal :: Int -> GenM Tactic
+genMatchConclGoal n = 
+  let tacCall = "heuristics" in 
+  let eqnGen m = let gargs = genNames "garg" (replicate m 0) in
+                 let hargs = genNames "harg" (replicate m 0) in
+                 let gargsq = map (\arg -> qmark_ arg) gargs in
+                 let hargsq = map (\arg -> qmark_ arg) hargs in
+                 let gexpr = foldl' (\s ls -> s ++ " " ++ ls) "?Pr" gargsq in
+                 let hexpr = foldl' (\s ls -> s ++ " " ++ ls) "Pr"  hargsq in
+                 let tacAction = TacticSeq $ map (\(one,two) -> TacticCall tacCall [JustString one, JustString two]) (zip gargs hargs) in
+                 let tacGoalPat = TacticGoalPattern [] $ TacticPattern $ JustString gexpr in
+                 let tacMatchKey = TacticSimpleMatch in
+                 let tacMatchItem = MatchTerm $ JustString "ty_hyp" in
+                 let tacPatRight = TacticPattern $ JustString $ hexpr in
+                 let tacMatchEqnRight = TacticEquationTerm tacPatRight  tacAction in
+                 TacticEquationGoal tacGoalPat $ TacticMatchExp $  TacticMatch tacMatchKey tacMatchItem [tacMatchEqnRight] in
+  let clausesGen n' = if  n' == 1 then [eqnGen 1] else (eqnGen n' : (clausesGen  (n'-1) )) in
+  let tacMatchExp = TacticMatchExp $ TacticMatch TacticSimpleMatch MatchGoal (clausesGen n) in
+  let argName = "H"  in
+  return $ TacticFunction "match_concl_goal"  [BinderName argName] $ TacticLet (JustString "ty_hyp", JustString $ "type of "++ argName) tacMatchExp  
+        
+   
+  
+
+
+    
+
+
+-- Preprocessing steps end
+
+
+
+
 qmark_ :: String -> String
 qmark_ s = "?" ++ s
 
@@ -690,7 +730,7 @@ firstTacEqnFormer gexpr hexpr toUnifyExpr =
 
 
 
-
+-- This has to be generalized for hexp, match key and to goal pattern 
 tacNestedMatchClause :: Term -> Term -> Tactic -> GenM TacticEquation
 tacNestedMatchClause gexpr hexpr tacAction =
   let tacPattern = TacticPattern $ JustTerm gexpr in

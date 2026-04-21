@@ -93,7 +93,7 @@ data Tactic = TacticRewrite (Maybe String) [String] [String] [String]
               | TacticUnfold [String] (Maybe String)
               | TacticFold [String] (Maybe String)
               | TacticRepeat Tactic
-              | TacticFunction Identifier [CBinder] TacticMatch
+              | TacticFunction Identifier [CBinder] Tactic
               | TacticMatchExp TacticMatch
               | TacticCall Identifier [TacticTerm] -- Calling tactic functions with arguments
               | TacticAssert (TacticTerm, TacticTerm) TacticTerm Tactic
