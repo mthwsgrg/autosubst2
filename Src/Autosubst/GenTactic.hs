@@ -18,12 +18,24 @@ import           Data.List                as L
 -- Generation of as_apply tactic Start
 
 
+relSize :: Int
+relSize = 9
+
+premisesSize :: Int
+premisesSize = 10
+
+qvarSize :: Int
+qvarSize = 15
+
 genAsApply :: [TId] -> GenM [Sentence]
 genAsApply xs = do
   musigma <- genMuSigma xs
   heuristics <- genHeuristics xs
-  matchConclGoal <- genMatchConclGoal 9
-  return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral musigma] ++ [SentenceTacticGeneral $ heuristics] ++ [SentenceTacticGeneral $ matchConclGoal] 
+  matchConclGoal <- genMatchConclGoal relSize
+  premToSubgoals  <- genPremToSubgoals
+  qvarToEvar <- genQvarToEvar premisesSize
+  return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral musigma] ++ [SentenceTacticGeneral $ heuristics] ++ [SentenceTacticGeneral $ matchConclGoal]
+           ++ [SentenceTacticGeneral premToSubgoals] ++ [SentenceTacticGeneral qvarToEvar]   
 
 
 -- I don't print implicit scopes along with the constructors (maybe add it later)
@@ -677,6 +689,33 @@ genMatchConclGoal n =
         
    
   
+genPremToSubgoals :: GenM Tactic
+genPremToSubgoals = return $ TacticId "Ltac premises_to_subgoals H n := \n \   
+ \  match (eval compute in n) with \n \
+ \  | 0 => match_concl_goal H; asimpl in H; exact H \n \
+ \  | _ => let ty_hyp := type of H in \n \
+ \       match ty_hyp with \n \
+ \       | ?ant -> ?concl => let z := fresh \"z\" in \n \
+ \                          evar (z: ant); specialize (H ?z); premises_to_subgoals H (n-1); clear z \n \
+ \      end \n \                         
+ \  end."
+
+genQvarToEvar :: Int -> GenM Tactic
+genQvarToEvar n =
+  let zeroToN = map (\s -> "premises_to_subgoals" ++ " H' " ++ s ) (genNames "" (replicate n 0)) in
+  let call_prem = tail $ foldl' (\s ls -> s ++ "| " ++ ls) "" zeroToN in  
+  return $ TacticId  ("Ltac qvar_to_evar H n := \n \
+  \ match (eval compute in n) with \n \
+  \ | 0 => let H' := fresh \"H\" in \n \
+  \      pose proof H as H'; \n \
+  \      first [" ++ call_prem ++ "]; \n \
+  \       clear H' \n \
+  \ | _ => let ty_hyp := type of H in \n \
+  \      match ty_hyp with \n \
+  \      | forall (x: ?T), ?rest => let y := fresh \"y\" in \n \
+  \                          evar (y: T); specialize (H ?y); qvar_to_evar H (n-1); clear y \n \                                         
+  \      end \n \
+  \ end.")
 
 
     
@@ -766,7 +805,7 @@ genCompp :: GenM [Sentence]
 genCompp = do
   toVarT <- toVar "tmx" $ SubstSubst [TermId "sigma1", TermId "sigma2", TermId "sigma3"]
   return $ [SentenceId $ termStr toVarT]
--}
+
 
 genBottomJunk :: [TId] -> [TId] -> [TId] ->[(Binder,TId)] -> GenM [Sentence]
 genBottomJunk varSorts xs substSorts upList = do
@@ -778,4 +817,4 @@ genBottomJunk varSorts xs substSorts upList = do
 genmString :: (Show a) =>  a -> GenM String
 genmString x = return (show x)
 
-
+-}

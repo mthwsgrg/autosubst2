@@ -52,12 +52,12 @@ genAutomation varSorts xs substSorts upList = do
   instances <- genInstances substSorts varSorts
   notation <- genNotation varSorts substSorts upList
   asApply <- genAsApply substSorts
-  bottomJunk <- genBottomJunk varSorts xs substSorts upList
+ -- bottomJunk <- genBottomJunk varSorts xs substSorts upList
   return $ implicits  ++ instances ++ notation ++ [unfold, unfold_star, asimpl', SentenceTactic "asimpl" (TacticSeq [TacticRepeat (TacticId "try unfold_funcomp"), TacticId "auto_unfold in *", TacticId "asimpl'", TacticRepeat (TacticId "try unfold_funcomp")])
               , SentenceId "Tactic Notation \"asimpl\" \"in\" hyp(J) := revert J; asimpl; intros J."
               , autocase
               , SentenceTacticNotation ["\"asimpl\"", "\"in\"", "\"*\""] (TacticSeq [TacticId "auto_unfold in *", TacticRewrite (Just "in *") substFunctions upFunctions (monadLemmas ++ varLemmas)])
-              ] ++  (genSubstifyTactics sortsWithRenamings) ++ asApply ++ bottomJunk
+              ] ++  (genSubstifyTactics sortsWithRenamings) ++ asApply -- ++ bottomJunk
 
 
 -- Generation of renamify/substify tactics
