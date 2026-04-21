@@ -25,7 +25,7 @@ premisesSize :: Int
 premisesSize = 10
 
 qvarSize :: Int
-qvarSize = 15
+qvarSize = 16
 
 genAsApply :: [TId] -> GenM [Sentence]
 genAsApply xs = do
@@ -34,8 +34,9 @@ genAsApply xs = do
   matchConclGoal <- genMatchConclGoal relSize
   premToSubgoals  <- genPremToSubgoals
   qvarToEvar <- genQvarToEvar premisesSize
+  asApplyLayout <- genAsApplyLayout qvarSize
   return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral musigma] ++ [SentenceTacticGeneral $ heuristics] ++ [SentenceTacticGeneral $ matchConclGoal]
-           ++ [SentenceTacticGeneral premToSubgoals] ++ [SentenceTacticGeneral qvarToEvar]   
+           ++ [SentenceTacticGeneral premToSubgoals] ++ [SentenceTacticGeneral qvarToEvar] ++ [SentenceTacticGeneral asApplyLayout]   
 
 
 -- I don't print implicit scopes along with the constructors (maybe add it later)
@@ -718,8 +719,16 @@ genQvarToEvar n =
   \ end.")
 
 
-    
-
+genAsApplyLayout :: Int -> GenM Tactic    
+genAsApplyLayout n =
+  let zeroToN = map (\s -> "qvar_to_evar" ++ " H " ++ s ) (genNames "" (replicate n 0)) in
+  let qvar_to_evar = tail $ foldl' (\s ls -> s ++ "| " ++ ls) "" zeroToN in 
+  return $ TacticId ("Ltac as_apply H' := unshelve( \n \
+  \ intros; asimpl; \n \
+  \ let H := fresh \"H\" in \n \
+  \ pose proof H' as H; \n \
+  \ asimpl in H; \n \
+  \ first [" ++ qvar_to_evar ++ "]).") 
 
 -- Preprocessing steps end
 
