@@ -27,6 +27,10 @@ premisesSize = 10
 qvarSize :: Int
 qvarSize = 16
 
+funName :: String
+funName = "heuristics"
+
+
 genAsApply :: [TId] -> GenM [Sentence]
 genAsApply xs = do
   musigma <- genMuSigma xs
@@ -53,8 +57,8 @@ genHeuristics xs = do
   mucase <- genMuSigmaCase
   congrClos <- genForEachSort xs genCongrClosureSort
   idCases <- genIdLaws xs
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ renamifyCases ++ substifyCases ++ [mucase] ++ bindElimEqns ++ idCases ++ congrClos)
-  return $ TacticFunction "heuristics" [BinderName "gexp", BinderName "hexp"] (TacticMatchExp matchBody)
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (renamifyCases ++ substifyCases ++ [unifyCase] ++ [mucase] ++ bindElimEqns ++ idCases ++ congrClos)
+  return $ TacticFunction funName [BinderName "gexp", BinderName "hexp"] (TacticMatchExp matchBody)
   
     
 -- Takes a list of sorts and applies tactic equation generation function on each sort
@@ -151,8 +155,8 @@ genRenamify x = do
                  let tacAction = let act1 = let eqnLeft = TermApp (TermConst Comp) [TermApp (TermId $ subst_ x)  (map (\(srt,sigma) -> renAsSub srt sigma) $ zip srts leftSubs), TermId $ "sigma"] in
                                             TacticAssert (JustTerm eqnLeft, JustTerm unifExpr)  (JustString $ "eq") $ TacticSeq [TacticId "renamify", TacticId "reflexivity"] in
                                  let act2 = TacticCall "rewrite" [JustString "eq"] in
-                                 let act3 = TacticCall "unify" [JustTerm unifExpr, JustString "hexp"] in
-                                 let act4 = TacticId "clear eq" in
+                                 let act4 = TacticCall funName [JustTerm unifExpr, JustString "hexp"] in
+                                 let act3 = TacticId "clear eq" in
                                  TacticLet (JustString "eq", JustString "fresh \"eq\"") $ TacticSeq [act1, act2, act3, act4] in
                  tacNestedMatchClause gexpr hexpr tacAction
   let substEqn = let gexpr = TermApp (TermId $ subst_ x) $ gexprSubs ++ [TermId $ "?s"] in
@@ -161,8 +165,8 @@ genRenamify x = do
                  let tacAction = let act1 = let eqnLeft = TermApp (TermId $ subst_ x) $ (map (\(srt,sigma) -> renAsSub srt sigma) $ zip srts leftSubs)  ++ [TermId "s"]  in
                                             TacticAssert (JustTerm eqnLeft, JustTerm unifExpr)  (JustString $ "eq") $ TacticSeq [TacticId "renamify", TacticId "reflexivity"] in
                                  let act2 = TacticCall "rewrite" [JustString "eq"] in
-                                 let act3 = TacticCall "unify" [JustTerm unifExpr, JustString "hexp"] in
-                                 let act4 = TacticId "clear eq" in
+                                 let act4 = TacticCall funName [JustTerm unifExpr, JustString "hexp"] in
+                                 let act3 = TacticId "clear eq" in
                                  TacticLet (JustString "eq", JustString "fresh \"eq\"") $ TacticSeq [act1, act2, act3, act4] in
                  tacNestedMatchClause gexpr hexpr tacAction
   tacEqn1 <- compEqn
@@ -182,8 +186,8 @@ genSubstify x = do
                  let tacAction = let act1 = let eqnLeft = TermApp (TermConst Comp) [TermApp (TermId $ ren_ x)  (map (\sigma -> TermId $ sigma) leftSubs), TermId $ "sigma"] in
                                             TacticAssert (JustTerm eqnLeft, JustTerm unifExpr)  (JustString $ "eq") $ TacticSeq [TacticId "substify", TacticId "reflexivity"] in
                                  let act2 = TacticCall "rewrite" [JustString "eq"] in
-                                 let act3 = TacticCall "unify" [JustTerm unifExpr, JustString "hexp"] in
-                                 let act4 = TacticId "clear eq" in
+                                 let act4 = TacticCall funName [JustTerm unifExpr, JustString "hexp"] in
+                                 let act3 = TacticId "clear eq" in
                                  TacticLet (JustString "eq", JustString "fresh \"eq\"") $ TacticSeq [act1, act2, act3,act4] in
                  tacNestedMatchClause gexpr hexpr tacAction
   let substEqn = let gexpr = TermApp (TermId $ ren_ x) $ gexprSubs ++ [TermId $ "?s"] in
@@ -192,8 +196,8 @@ genSubstify x = do
                  let tacAction = let act1 = let eqnLeft = TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId $ sigma) leftSubs)  ++ [TermId "s"] in
                                             TacticAssert (JustTerm eqnLeft, JustTerm unifExpr)  (JustString $ "eq") $ TacticSeq [TacticId "substify", TacticId "reflexivity"] in
                                  let act2 = TacticCall "rewrite" [JustString "eq"] in
-                                 let act3 = TacticCall "unify" [JustTerm unifExpr, JustString "hexp"] in
-                                 let act4 = TacticId "clear eq" in
+                                 let act4 = TacticCall funName [JustTerm unifExpr, JustString "hexp"] in
+                                 let act3 = TacticId "clear eq" in
                                  TacticLet (JustString "eq", JustString "fresh \"eq\"") $ TacticSeq [act1, act2, act3, act4] in
                  tacNestedMatchClause gexpr hexpr tacAction
   tacEqn1 <- compEqn
@@ -442,7 +446,7 @@ genAssocSubSubCases x = do
 
 
 genCongrClosureSort :: TId -> GenM [TacticEquation]
-genCongrClosureSort x = genCongrClosureSortGeneral x "heuristics"
+genCongrClosureSort x = genCongrClosureSortGeneral x funName
 
 
 
@@ -669,7 +673,7 @@ varsFormer bs noVar qmodifier =
 
 genMatchConclGoal :: Int -> GenM Tactic
 genMatchConclGoal n = 
-  let tacCall = "heuristics" in 
+  let tacCall = funName in 
   let eqnGen m = let gargs = genNames "garg" (replicate m 0) in
                  let hargs = genNames "harg" (replicate m 0) in
                  let gargsq = map (\arg -> qmark_ arg) gargs in
