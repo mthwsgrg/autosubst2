@@ -57,7 +57,7 @@ genHeuristics xs = do
   mucase <- genMuSigmaCase
   congrClos <- genForEachSort xs genCongrClosureSort
   idCases <- genIdLaws xs
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (renamifyCases ++ substifyCases ++ [unifyCase] ++ [mucase] ++ bindElimEqns ++ idCases ++ congrClos)
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (renamifyCases ++ substifyCases ++ [mucase] ++ bindElimEqns ++ idCases ++ congrClos)
   return $ TacticFunction funName [BinderName "gexp", BinderName "hexp"] (TacticMatchExp matchBody)
   
     
@@ -71,7 +71,7 @@ genMuSigma xs = do
   assocLaws <- genForEachSort xs genAssocCasesSort
   mapEnvLaws <- genForEachSort xs genMapEnvCasesSort
   congrClos <- genForEachSort xs (\x -> genCongrClosureSortGeneral x "musigma")
-  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") ([unifyCase] ++ redLaws ++ compLaws ++ assocLaws ++ mapEnvLaws ++ congrClos)
+  let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (congrClos ++ [unifyCase] ++ redLaws ++ compLaws ++ assocLaws ++ mapEnvLaws)
   return $ TacticFunction "musigma" [BinderName "gexp", BinderName "hexp"] (TacticMatchExp matchBody)
 
 
