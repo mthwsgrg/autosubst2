@@ -1,6 +1,7 @@
 
 axioms.v
 cbpv_bool.v
+cbpv_letrec.v
 cbpv.v
 cps.v
 fintype.v
@@ -14,6 +15,7 @@ sysL.v
 three_binders.v
 unscoped.v
 utlc_cbv.v
+utlc_num.v
 utlcSum.v
 utlc_test.v
 utlc.v

@@ -242,10 +242,13 @@ genRedCasesSort x = do
 
 genMapEnvCasesSort :: TId -> GenM [TacticEquation]
 genMapEnvCasesSort x = do
-  mapRenEqn <- genMapRenCases x
   mapSubEqn <- genMapSubCases x
-  return [mapRenEqn, mapSubEqn]
-   
+  hasRen <- hasRenamings x
+  if hasRen == True then do
+    mapRenEqn <- genMapRenCases x  
+    return [mapRenEqn, mapSubEqn]
+  else
+    return [mapSubEqn]
         
 genMapRenCases :: TId -> GenM TacticEquation
 genMapRenCases x = do

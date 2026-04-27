@@ -2,6 +2,8 @@ axioms.vo axioms.glob axioms.v.beautified axioms.required_vo: axioms.v
 axioms.vos axioms.vok axioms.required_vos: axioms.v 
 cbpv_bool.vo cbpv_bool.glob cbpv_bool.v.beautified cbpv_bool.required_vo: cbpv_bool.v fintype.vo
 cbpv_bool.vos cbpv_bool.vok cbpv_bool.required_vos: cbpv_bool.v fintype.vos
+cbpv_letrec.vo cbpv_letrec.glob cbpv_letrec.v.beautified cbpv_letrec.required_vo: cbpv_letrec.v fintype.vo
+cbpv_letrec.vos cbpv_letrec.vok cbpv_letrec.required_vos: cbpv_letrec.v fintype.vos
 cbpv.vo cbpv.glob cbpv.v.beautified cbpv.required_vo: cbpv.v fintype.vo
 cbpv.vos cbpv.vok cbpv.required_vos: cbpv.v fintype.vos
 cps.vo cps.glob cps.v.beautified cps.required_vo: cps.v fintype.vo
@@ -28,6 +30,8 @@ unscoped.vo unscoped.glob unscoped.v.beautified unscoped.required_vo: unscoped.v
 unscoped.vos unscoped.vok unscoped.required_vos: unscoped.v axioms.vos
 utlc_cbv.vo utlc_cbv.glob utlc_cbv.v.beautified utlc_cbv.required_vo: utlc_cbv.v fintype.vo
 utlc_cbv.vos utlc_cbv.vok utlc_cbv.required_vos: utlc_cbv.v fintype.vos
+utlc_num.vo utlc_num.glob utlc_num.v.beautified utlc_num.required_vo: utlc_num.v fintype.vo
+utlc_num.vos utlc_num.vok utlc_num.required_vos: utlc_num.v fintype.vos
 utlcSum.vo utlcSum.glob utlcSum.v.beautified utlcSum.required_vo: utlcSum.v fintype.vo
 utlcSum.vos utlcSum.vok utlcSum.required_vos: utlcSum.v fintype.vos
 utlc_test.vo utlc_test.glob utlc_test.v.beautified utlc_test.required_vo: utlc_test.v fintype.vo
