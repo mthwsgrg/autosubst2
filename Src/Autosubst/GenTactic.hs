@@ -22,7 +22,7 @@ relSize :: Int
 relSize = 9
 
 premisesSize :: Int
-premisesSize = 10
+premisesSize = 11
 
 qvarSize :: Int
 qvarSize = 16
@@ -50,10 +50,11 @@ genAsApply xs = do
 
 genHeuristics :: [TId] -> GenM Tactic
 genHeuristics xs = do
+  xsRen <- filterM (\s -> hasRenamings s) xs --Filtering sorts that has renaming and substitutions 
   unifyCase <- genUnifyCase
   bindElimEqns <- genForEachSort xs genBindElimEqnsSort
-  renamifyCases <- genForEachSort xs genRenamify
-  substifyCases <- genForEachSort xs genSubstify
+  renamifyCases <- genForEachSort xsRen genRenamify
+  substifyCases <- genForEachSort xsRen genSubstify
   mucase <- genMuSigmaCase
   congrClos <- genForEachSort xs genCongrClosureSort
   idCases <- genIdLaws xs
@@ -231,9 +232,9 @@ genRedCasesSort x = do
                   let tacOne = TacticCall "unify" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] in
                   let tacTwo = TacticCall "musigma" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] in 
                   TacticFirst [tacOne,tacTwo]
-   let csListWithPos = filter (\c -> case c of
+   let csListWithPos' = filter (\c -> case c of
                                       Constructor pms name pos -> not (pos == [])) csList
-  
+   csListWithPos <- filterM (\c -> consPosHasSrtSub x c) csListWithPos'                      
    tacEqnsSub <- mapM (\cs -> genRedCasesCons x cs asimpledLiftGenSub subst_) csListWithPos
    tacEqnsRen <- mapM (\cs -> genRedCasesCons x cs asimpledLiftGenRen ren_) csListWithPos
    return $ tacEqnsSub ++ tacEqnsRen
@@ -279,11 +280,16 @@ genMapSubCases x = do
 
 genCompCasesSort :: TId -> GenM [TacticEquation]
 genCompCasesSort x = do
-  renRenTacEqn <- genCompRenRenCases x
-  renSubTacEqn <- genCompRenSubCases x
-  subRenTacEqn <- genCompSubRenCases x
   subSubTacEqn <- genCompSubSubCases x 
-  return [renRenTacEqn, renSubTacEqn, subRenTacEqn, subSubTacEqn]
+  hasRen <- hasRenamings x
+  if hasRen == True then do
+    renRenTacEqn <- genCompRenRenCases x
+    renSubTacEqn <- genCompRenSubCases x
+    subRenTacEqn <- genCompSubRenCases x
+    return [renRenTacEqn, renSubTacEqn, subRenTacEqn, subSubTacEqn]
+  else
+    return [subSubTacEqn]
+
 
 
 genCompRenRenCases :: TId -> GenM TacticEquation
@@ -356,12 +362,17 @@ genCompSubSubCases x = do
 
 genAssocCasesSort :: TId -> GenM [TacticEquation]
 genAssocCasesSort x = do
-  renRenTacEqn <- genAssocRenRenCases x
-  renSubTacEqn <- genAssocRenSubCases x
-  subRenTacEqn <- genAssocSubRenCases x
-  subSubTacEqn <- genAssocSubSubCases x 
-  return [renRenTacEqn, renSubTacEqn, subRenTacEqn, subSubTacEqn]
-
+  subSubTacEqn <- genAssocSubSubCases x
+  hasRen <- hasRenamings x
+  if hasRen == True then do 
+   renRenTacEqn <- genAssocRenRenCases x
+   renSubTacEqn <- genAssocRenSubCases x
+   subRenTacEqn <- genAssocSubRenCases x
+   return [renRenTacEqn, renSubTacEqn, subRenTacEqn, subSubTacEqn]
+  else
+   return [subSubTacEqn]
+   
+  
 
 
 
@@ -461,17 +472,20 @@ genIdLaws xs = do
 genIdLawsSort :: TId -> GenM [TacticEquation]
 genIdLawsSort x = do
   srts <- substOf x
+  hasRen <- hasRenamings x
   let rightSubs = genNames "sigma" srts
   let hexprSub = TermApp (TermId $ subst_ x) $ (map (\sigma -> TermId $ qmark_ sigma) rightSubs) ++ [TermId "?t"]
   let tacActionSub = let unifyTerm = TermApp (TermId $ subst_ x) $ (map (\srt -> TermId $ var_ srt) srts) ++ [TermId "s"] in
                      TacticCall "unify" [JustTerm  unifyTerm, JustString "hexp"]
   let tacEqnSub = TacticEquationTerm (TacticPattern (JustTerm $ hexprSub)) $ tacActionSub
-  let hexprRen = TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId $ qmark_ sigma) rightSubs) ++ [TermId "?t"]
-  let tacActionRen = let unifyTerm = TermApp (TermId $ ren_ x) $ (map (\srt -> TermConst Id) srts) ++ [TermId "s"] in
-                     TacticCall "unify" [JustTerm  unifyTerm, JustString "hexp"]
-  let tacEqnRen = TacticEquationTerm (TacticPattern (JustTerm $ hexprRen)) $ tacActionRen
-  return $ [tacEqnSub, tacEqnRen]
-
+  if hasRen == True then
+    let hexprRen = TermApp (TermId $ ren_ x) $ (map (\sigma -> TermId $ qmark_ sigma) rightSubs) ++ [TermId "?t"] in
+    let tacActionRen = let unifyTerm = TermApp (TermId $ ren_ x) $ (map (\srt -> TermConst Id) srts) ++ [TermId "s"] in
+                     TacticCall "unify" [JustTerm  unifyTerm, JustString "hexp"] in
+    let tacEqnRen = TacticEquationTerm (TacticPattern (JustTerm $ hexprRen)) $ tacActionRen in
+    return $ [tacEqnSub, tacEqnRen]
+  else
+    return $ [tacEqnSub]
 
 
 
@@ -777,10 +791,34 @@ firstTacEqnFormer gexpr hexpr toUnifyExpr =
   let tacOne =  TacticCall "unify" [JustTerm toUnifyExpr, JustString "hexp"] in
   let tacTwo =  TacticCall "musigma" [JustTerm toUnifyExpr, JustString "hexp"] in  
   tacNestedMatchClause gexpr hexpr (TacticFirst [tacOne,tacTwo])
-  
+
+sortHasRenAndSub :: TId -> GenM Bool
+sortHasRenAndSub s = do
+  varSorts <- getVarSorts
+  ifRenaming <- hasRenamings s
+  return $ (elem s varSorts) && ifRenaming
+
+sortHasNoRenAndSub :: TId -> GenM Bool
+sortHasNoRenAndSub s = do
+  varSorts <- getVarSorts
+  ifRenaming <- hasRenamings s
+  return $ (not (elem s varSorts)) && (not ifRenaming)
+
+sortHasOnlySub :: TId -> GenM Bool
+sortHasOnlySub s = do
+  varSorts <- getVarSorts
+  ifRenaming <- hasRenamings s
+  return $ (elem s varSorts) && (not ifRenaming)
 
 
-
+consPosHasSrtSub :: TId -> Constructor -> GenM Bool
+consPosHasSrtSub srt (Constructor _ _ pos) = do
+  srts <- substOf srt
+  let srtCombiner prev s = do
+        substSrts <- substOf s
+        return $ union substSrts prev
+  posSubstSorts <- foldM (\prev s -> srtCombiner prev s) []  $ foldr (\(Position _ arg) prev -> union (argSorts arg) prev) [] pos  
+  return $ [] ==  (srts \\ posSubstSorts)  
 
 -- This has to be generalized for hexp, match key and to goal pattern 
 tacNestedMatchClause :: Term -> Term -> Tactic -> GenM TacticEquation
