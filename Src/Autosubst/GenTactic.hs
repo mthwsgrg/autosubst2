@@ -41,12 +41,8 @@ genAsApply xs = do
   asApplyLayout <- genAsApplyLayout qvarSize
   return $ [SentenceId "(** as_apply follows **)"] ++ [SentenceTacticGeneral musigma] ++ [SentenceTacticGeneral $ heuristics] ++ [SentenceTacticGeneral $ matchConclGoal]
            ++ [SentenceTacticGeneral premToSubgoals] ++ [SentenceTacticGeneral qvarToEvar] ++ [SentenceTacticGeneral asApplyLayout]   
+           ++ [SentenceTacticGeneral $ TacticId "Tactic Notation \"as_apply\" open_constr(H) := as_apply' @H."]
 
-
--- I don't print implicit scopes along with the constructors (maybe add it later)
--- I don't at the moment use SubstTy objects (maybe add it later for maintaining consistentcy with the other parts)
--- Currently I use some existing functions to talk with signature, and also I define some myself. Some of the latter maybe redundant but I will remove it later.
--- TODO : Look for redundancy between renaming/substitution generation functions and merge whenever possible.
 
 genHeuristics :: [TId] -> GenM Tactic
 genHeuristics xs = do
@@ -744,7 +740,7 @@ genAsApplyLayout :: Int -> GenM Tactic
 genAsApplyLayout n =
   let zeroToN = map (\s -> "qvar_to_evar" ++ " H " ++ s ) (genNames "" (replicate n 0)) in
   let qvar_to_evar = tail $ foldl' (\s ls -> s ++ "| " ++ ls) "" zeroToN in 
-  return $ TacticId ("Ltac as_apply H' := unshelve( \n \
+  return $ TacticId ("Ltac as_apply' H' := unshelve( \n \
   \ intros; asimpl; \n \
   \ let H := fresh \"H\" in \n \
   \ pose proof H' as H; \n \
@@ -831,44 +827,4 @@ tacNestedMatchClause gexpr hexpr tacAction =
   return $ TacticEquationTerm  tacPattern tacMatchExp
 
 
-{-
--- generates variables of a sort in 
-asimpledLiftGenRen :: [Binder] -> (Term, TId) -> GenM Term
--}
 
-
-
--- Generation of as_apply tactic End
-
-
-
--- Generation of program data to see what's happening
-
-{- This genAsApply is a dummy 
-
-genAsApply :: [TId] -> GenM [Sentence]
-genAsApply xs =  return $ [SentenceId "(** as_apply follows **)"]
-
--}
-
-{-
-termStr :: Term -> String
-termStr (TermId s) = s
-
-genCompp :: GenM [Sentence]
-genCompp = do
-  toVarT <- toVar "tmx" $ SubstSubst [TermId "sigma1", TermId "sigma2", TermId "sigma3"]
-  return $ [SentenceId $ termStr toVarT]
-
-
-genBottomJunk :: [TId] -> [TId] -> [TId] ->[(Binder,TId)] -> GenM [Sentence]
-genBottomJunk varSorts xs substSorts upList = do
-  csListList  <- mapM constructors xs
-  -- gencmp    <- genCompp
-  return $ [SentenceId "(** Some Junk below **)"] ++ (map SentenceId (map show (concat csListList))) -- ++ gencmp
-
-
-genmString :: (Show a) =>  a -> GenM String
-genmString x = return (show x)
-
--}
