@@ -78,10 +78,11 @@ genMuSigma xs = do
 genBindElimEqnsSort :: TId -> GenM [TacticEquation]
 genBindElimEqnsSort x = do
   csList <- constructors x
-  let binderPositions = concat $ map (\c -> case c of
-                                              Constructor pms n pos -> filter (\p -> and [isPosArgAtom p, isPosBinder p]) pos) csList -- TODO: maybe a clean up function to remove repeated positions
+  let binderPositions' = concat $ map (\c -> case c of
+                                              Constructor pms n pos -> filter (\p -> and [isPosArgAtom p, isPosBinder p]) pos) csList -- TODO: maybe a clean up function to remove repeated position
+  binderPositions <- filterM (\(Position bs (Atom s)) -> allDepSortsHasRenAndSub s) binderPositions'
   eqnsSub <- mapM (\p -> genBindElimEqnsSub p) binderPositions
-  eqnsRen <- mapM (\p -> genBindElimEqnsRen p) binderPositions
+  eqnsRen <- mapM (\p -> genBindElimEqnsRen p) binderPositions  
   return $ eqnsRen ++ eqnsSub -- Note ren should be before sub
 
 
@@ -448,16 +449,8 @@ genAssocSubSubCases x = do
 
 
 
-
-
-
-
-
-
-
 genCongrClosureSort :: TId -> GenM [TacticEquation]
 genCongrClosureSort x = genCongrClosureSortGeneral x funName
-
 
 
 
@@ -530,10 +523,14 @@ genCongrClosureSortGeneral x funName = do
                               let hexprSubs = map (\tau -> TermId tau) rightSubs in
                               map (\(g,h) -> TacticCall funName [JustTerm g, JustTerm h]) $ zip gexprSubs hexprSubs  
         tacEqnSub <- tacNestedMatchClause gexprSub hexprSub $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "s", JustTerm $ TermId $ "t"]] ++ funCallSubs
-        tacEqnRen <- tacNestedMatchClause gexprRen hexprRen $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "s", JustTerm $ TermId $ "t"]] ++ funCallSubs
         tacEqnCompSub <-tacNestedMatchClause gexprCompSub hexprCompSub $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "sigma", JustTerm $ TermId $ "tau"]] ++ funCallSubs
-        tacEqnCompRen <-tacNestedMatchClause gexprCompRen hexprCompRen $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "sigma", JustTerm $ TermId $ "tau"]] ++ funCallSubs
-        return $ [tacEqnSub, tacEqnRen, tacEqnCompSub, tacEqnCompRen]
+        hasRen <- hasRenamings x
+        if hasRen == True then do        
+          tacEqnRen <- tacNestedMatchClause gexprRen hexprRen $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "s", JustTerm $ TermId $ "t"]] ++ funCallSubs
+          tacEqnCompRen <-tacNestedMatchClause gexprCompRen hexprCompRen $ TacticSeq $ [TacticCall funName [JustTerm $ TermId $ "sigma", JustTerm $ TermId $ "tau"]] ++ funCallSubs
+          return $ [tacEqnSub, tacEqnRen, tacEqnCompSub, tacEqnCompRen]
+        else
+          return [tacEqnSub, tacEqnCompSub]
   let genConsCase (Constructor pms name pos) = do
         let posLeft = genNames "s" pos
         let posRight = genNames "t" pos
@@ -809,6 +806,14 @@ sortHasOnlySub s = do
   ifRenaming <- hasRenamings s
   return $ (elem s varSorts) && (not ifRenaming)
 
+allDepSortsHasRenAndSub :: TId -> GenM Bool
+allDepSortsHasRenAndSub x = do
+  srts <- substOf x
+  hasRenSrt <- foldM (\b s -> do
+                         h <- hasRenamings s
+                         return $ b && h) True srts
+  return hasRenSrt
+ 
 
 consPosHasSrtSub :: TId -> Constructor -> GenM Bool
 consPosHasSrtSub srt (Constructor _ _ pos) = do
