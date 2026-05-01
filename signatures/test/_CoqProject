@@ -5,8 +5,6 @@ cbpv_letrec.v
 cbpv.v
 cps.v
 fintype.v
-fol_param.v
-pi_calculus.v
 sysf_cbv.v
 sysf_pat_2.v
 sysf_pat.v

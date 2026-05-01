@@ -10,10 +10,6 @@ cps.vo cps.glob cps.v.beautified cps.required_vo: cps.v fintype.vo
 cps.vos cps.vok cps.required_vos: cps.v fintype.vos
 fintype.vo fintype.glob fintype.v.beautified fintype.required_vo: fintype.v axioms.vo
 fintype.vos fintype.vok fintype.required_vos: fintype.v axioms.vos
-fol_param.vo fol_param.glob fol_param.v.beautified fol_param.required_vo: fol_param.v fintype.vo
-fol_param.vos fol_param.vok fol_param.required_vos: fol_param.v fintype.vos
-pi_calculus.vo pi_calculus.glob pi_calculus.v.beautified pi_calculus.required_vo: pi_calculus.v fintype.vo
-pi_calculus.vos pi_calculus.vok pi_calculus.required_vos: pi_calculus.v fintype.vos
 sysf_cbv.vo sysf_cbv.glob sysf_cbv.v.beautified sysf_cbv.required_vo: sysf_cbv.v fintype.vo
 sysf_cbv.vos sysf_cbv.vok sysf_cbv.required_vos: sysf_cbv.v fintype.vos
 sysf_pat_2.vo sysf_pat_2.glob sysf_pat_2.v.beautified sysf_pat_2.required_vo: sysf_pat_2.v fintype.vo

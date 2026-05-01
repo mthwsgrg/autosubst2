@@ -30,6 +30,8 @@ qvarSize = 16
 funName :: String
 funName = "heuristics"
 
+minSigmaName :: String
+minSigmaName = "sigma_min"
 
 genAsApply :: [TId] -> GenM [Sentence]
 genAsApply xs = do
@@ -67,9 +69,9 @@ genMuSigma xs = do
   compLaws <- genForEachSort xs genCompCasesSort
   assocLaws <- genForEachSort xs genAssocCasesSort
   mapEnvLaws <- genForEachSort xs genMapEnvCasesSort
-  congrClos <- genForEachSort xs (\x -> genCongrClosureSortGeneral x "musigma")
+  congrClos <- genForEachSort xs (\x -> genCongrClosureSortGeneral x minSigmaName)
   let matchBody = TacticMatch TacticSimpleMatch (MatchTerm $ JustString "gexp") (congrClos ++ [unifyCase] ++ redLaws ++ compLaws ++ assocLaws ++ mapEnvLaws)
-  return $ TacticFunction "musigma" [BinderName "gexp", BinderName "hexp"] (TacticMatchExp matchBody)
+  return $ TacticFunction minSigmaName [BinderName "gexp", BinderName "hexp"] (TacticMatchExp matchBody)
 
 
 
@@ -227,7 +229,7 @@ genRedCasesSort x = do
                   let paramTerms = map TermId pnames in
                   let posTerms = map TermId posNames in
                   let tacOne = TacticCall "unify" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] in
-                  let tacTwo = TacticCall "musigma" [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] in 
+                  let tacTwo = TacticCall minSigmaName [JustTerm $ TermApp (TermId $ renOrSub x) $ (map TermId subNames) ++ [idApp name $ paramTerms++posTerms], JustString "hexp"] in 
                   TacticFirst [tacOne,tacTwo]
    let csListWithPos' = filter (\c -> case c of
                                       Constructor pms name pos -> not (pos == [])) csList
@@ -498,7 +500,7 @@ genUnifyCase = do
 
 genMuSigmaCase :: GenM TacticEquation
 genMuSigmaCase = do
-  let tacAction = TacticCall "musigma" [JustString "gexp", JustString "hexp"]
+  let tacAction = TacticCall minSigmaName [JustString "gexp", JustString "hexp"]
   return $ TacticEquationTerm (TacticPattern (JustTerm $ TermId "?s")) $ tacAction
 
 
@@ -785,7 +787,7 @@ unifyTacEqnFormer gexpr hexpr toUnifyExpr =
 firstTacEqnFormer :: Term -> Term -> Term -> GenM TacticEquation
 firstTacEqnFormer gexpr hexpr toUnifyExpr =
   let tacOne =  TacticCall "unify" [JustTerm toUnifyExpr, JustString "hexp"] in
-  let tacTwo =  TacticCall "musigma" [JustTerm toUnifyExpr, JustString "hexp"] in  
+  let tacTwo =  TacticCall minSigmaName [JustTerm toUnifyExpr, JustString "hexp"] in  
   tacNestedMatchClause gexpr hexpr (TacticFirst [tacOne,tacTwo])
 
 sortHasRenAndSub :: TId -> GenM Bool
